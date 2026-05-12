@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy[asyncio]
+asyncpg
+pydantic-settings
+alembic
+python-dotenv
+python-jose[cryptography] 
+bcrypt == 4.3.0 #проблемная библиотека, пароли до 72 байт, баг. по идее 4.3.0 работает без нареканий, версии выше не работают, периодически
