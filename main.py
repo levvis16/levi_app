@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from database import engine
-from models import Base
+from database.database import engine
+from database.models import Base
 from routers import user, group, dialogs
 
 @asynccontextmanager

@@ -4,9 +4,9 @@ from sqlalchemy import select, desc, func
 from typing import List
 from sqlalchemy.orm import selectinload
 
-from database import get_db
-from models import User, Dialog, Message, user_dialog
-from schemas import DialogCreate, DialogOut, MessageCreate, MessageOut
+from database.database import get_db
+from database.models import User, Dialog, Message, user_dialog
+from database.schemas import DialogCreate, DialogOut, MessageCreate, MessageOut
 from key_logic.hash import get_current_user 
 
 router = APIRouter(prefix="/dialogs", tags=["Dialogs"])
@@ -77,6 +77,7 @@ async def create_or_get_dialog(
         companion_id=companion.id,
         companion_name=companion.name,
     )
+
 @router.post('/{dialog_id}/messages', response_model=MessageOut, status_code=status.HTTP_201_CREATED)
 async def send_message(dialog_id: int, msg_data: MessageCreate, db: AsyncSession=Depends(get_db),
                         current_user: User = Depends(get_current_user)):

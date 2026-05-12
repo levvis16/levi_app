@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from database import get_db
+from database.database import get_db
 from key_logic.hash import get_current_user, hash_password, verify_password, create_access_token
-from models import User as UserModel
-from schemas import UserResponse, UserCreate
+from database.models import User as UserModel
+from database.schemas import UserResponse, UserCreate
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload

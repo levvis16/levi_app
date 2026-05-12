@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db
-from models import Group as GroupModel
-from schemas import GroupCreate, GroupResponse
+from database.database import get_db
+from database.models import Group as GroupModel
+from database.schemas import GroupCreate, GroupResponse
 
 router = APIRouter(prefix='/groups', tags=['groups'])
 

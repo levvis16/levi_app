@@ -1,4 +1,4 @@
-from config import settings
+from dependecies.config import settings
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 engine = create_async_engine(settings.url_connection)
