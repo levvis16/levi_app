@@ -1,24 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-
 from database import get_db
-from key_logic.hash import get_current_user, hash_password
+from key_logic.hash import get_current_user, hash_password, verify_password, create_access_token
 from models import User as UserModel
 from schemas import UserResponse, UserCreate
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from key_logic.hash import verify_password, create_access_token
-from fastapi.security import OAuth2PasswordRequestForm
-
-from key_logic.cesar_shifr import shifr
-from passlib.context import CryptContext
-# проверка special_id
 import os
 from dotenv import load_dotenv
+from fastapi.security import OAuth2PasswordRequestForm
 
 load_dotenv()
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-SECRET_KEY = os.getenv("SECRET_KEY")
 
 router = APIRouter(prefix='/users', tags=['users'])
 
@@ -36,7 +29,7 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=409, detail='User already registered')  
     
-    hashed_password = shifr(user.password)  
+    hashed_password = hash_password(user.password)
     
     db_user = UserModel(
         name=user.name,
@@ -47,6 +40,7 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
+    
     
     return db_user
 
@@ -74,40 +68,33 @@ async def delete_user(
     await db.commit()
     return None
 
-#переменная для хэширования пароля
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 @router.post('/register', response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    # Проверка существующего пользователя
     result = await db.execute(select(UserModel).where(UserModel.name == user.name))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Username already registered")
     
-    # Хешируем пароль
-    hashed = hash_password(user.password)
+    hashed_password = hash_password(user.password)
     
     db_user = UserModel(
         name=user.name,
         age=user.age,
-        password=hashed  
+        password=hashed_password
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
     return db_user
 
-
 @router.post("/login")
 async def login_user(
-    username: str,   # просто поле
-    password: str,   # просто поле
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(UserModel).where(UserModel.name == username))
+    result = await db.execute(select(UserModel).where(UserModel.name == form_data.username))
     user = result.scalar_one_or_none()
     
-    if not user or not verify_password(password, user.password):
+    if not user or not verify_password(form_data.password, user.password):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     
     token = create_access_token(data={"sub": user.name})

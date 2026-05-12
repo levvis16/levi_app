@@ -40,7 +40,6 @@ class UserResponse(BaseModel):
     id: int
     name: str
     age: int
-    password: str
     #groups: list[GroupShort] = []
 
     class Config:

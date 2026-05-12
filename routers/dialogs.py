@@ -36,47 +36,47 @@ async def get_my_dialogs(db: AsyncSession=Depends(get_db), current_user: User = 
         ))
     return result_list
 
-@router.post('/', response_model=DialogOut, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=DialogOut, status_code=status.HTTP_201_CREATED)
 async def create_or_get_dialog(
     dialog_data: DialogCreate,
-    db: AsyncSession=Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     companion = await db.get(User, dialog_data.user_id_2)
     if not companion:
-        raise HTTPException(status_code=404, detail="User not exist")
+        raise HTTPException(status_code=404, detail="User not found")
     
-    subq = select(Dialog.id).join(Dialog.users).where(User.id.in_([current_user.id, companion.id]))
-
-    dialog_current = await db.execute(
-        select(Dialog).join(Dialog.users).where(User.id == current_user.id)
-    )
-
-    dialogs_cur_list = dialog_current.scalars.all()
-    for d in dialogs_cur_list:
-        await db.refresh(d, attribute_names=["users"])
-        if companion in d.users:
-            last_msg = d.messages[-1].text if d.messages else None
+    stmt = select(Dialog).join(Dialog.users).where(
+        User.id.in_([current_user.id, companion.id])
+    ).options(selectinload(Dialog.users))
+    
+    result = await db.execute(stmt)
+    dialogs = result.scalars().all()
+    
+    for dialog in dialogs:
+        users_in_dialog = {u.id for u in dialog.users}
+        if {current_user.id, companion.id}.issubset(users_in_dialog):
+            last_msg = dialog.messages[-1].text if dialog.messages else None
             return DialogOut(
-                id = d.id,
-                created_at=d.created_at,
+                id=dialog.id,
+                created_at=dialog.created_at,
                 last_message=last_msg,
-                companion_id= companion.id,
-                companion_name= companion.name,
+                companion_id=companion.id,
+                companion_name=companion.name,
             )
     
-    new_dialog = Dialog(users = [current_user, companion])
+    new_dialog = Dialog(users=[current_user, companion])
     db.add(new_dialog)
     await db.commit()
     await db.refresh(new_dialog)
+    
     return DialogOut(
-        id = d.id,
-        created_at=d.created_at,
-        last_message=last_msg,
-        companion_id= companion.id,
-        companion_name= companion.name,
+        id=new_dialog.id,
+        created_at=new_dialog.created_at,
+        last_message=None,
+        companion_id=companion.id,
+        companion_name=companion.name,
     )
-
 @router.post('/{dialog_id}/messages', response_model=MessageOut, status_code=status.HTTP_201_CREATED)
 async def send_message(dialog_id: int, msg_data: MessageCreate, db: AsyncSession=Depends(get_db),
                         current_user: User = Depends(get_current_user)):

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import Table, Column, ForeignKey, Integer, Text
 from sqlalchemy import String, CheckConstraint
-from datetime import datetime, timezone
+from datetime import datetime
 
 class Base(DeclarativeBase):
     pass
@@ -24,7 +24,7 @@ class Dialog(Base):
     __tablename__ = "dialogs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     users: Mapped[list["User"]] = relationship(secondary=user_dialog, back_populates="dialogs")
     messages: Mapped[list["Message"]] = relationship(back_populates="dialog", cascade="all, delete-orphan")
