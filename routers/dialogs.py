@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 from typing import List
@@ -7,9 +7,11 @@ from sqlalchemy.orm import selectinload
 from database.database import get_db
 from database.models import User, Dialog, Message, user_dialog
 from database.schemas import DialogCreate, DialogOut, MessageCreate, MessageOut
-from key_logic.hash import get_current_user 
+from key_logic.hash import get_current_user, decode_token 
 
 router = APIRouter(prefix="/dialogs", tags=["Dialogs"])
+
+active_connections: dict[int, WebSocket] = {}
 
 @router.get("/", response_model=List[DialogOut])
 async def get_my_dialogs(db: AsyncSession=Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -96,6 +98,27 @@ async def send_message(dialog_id: int, msg_data: MessageCreate, db: AsyncSession
     db.add(new_msg)
     await db.commit()
     await db.refresh(new_msg)
+
+    result = await db.execute(
+        select(Dialog).where(Dialog.id == dialog_id).options(selectinload(Dialog.users))
+    )
+    dialog = result.scalar_one()
+    recipient = next((u for u in dialog.users if u.id != current_user.id), None)
+
+    if recipient and recipient.id in active_connections:
+        ws = active_connections[recipient.id]
+        await ws.send_json({
+            "event": "new_message",
+            "data": {
+                "message_id": new_msg.id,
+                "dialog_id": dialog_id,
+                "sender_id": current_user.id,
+                "sender_name": current_user.name,
+                "text": new_msg.text,
+                "created_at": new_msg.created_at.isoformat()
+            }
+        })
+
     return new_msg
 
 @router.get("/{dialog_id}/messages", response_model=List[MessageOut])
@@ -110,3 +133,32 @@ async def get_messages(
     result = await db.execute(stmt)
     messages = result.scalars().all()
     return messages
+
+@router.websocket("/ws/{token}")
+async def websocket_endpoint(websocket: WebSocket, token: str):
+    try:
+        payload = decode_token(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            await websocket.close(code=1008, reason="Invalid token payload")
+            return
+    except Exception as e:
+        print(f"Auth error: {e}")
+        await websocket.close(code=1008, reason="Invalid token")
+        return
+    
+    await websocket.accept()
+    active_connections[user_id] = websocket
+    print(f"✅ User {user_id} connected. Total active: {len(active_connections)}")
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+            else:
+                await websocket.send_text(f"Echo: {data}")
+    except WebSocketDisconnect:
+        if user_id in active_connections:
+            del active_connections[user_id]
+        print(f"🔌 User {user_id} disconnected")
