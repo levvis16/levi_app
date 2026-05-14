@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мессенджер — тест WebSocket</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input, button {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .status.online {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 20px 0;
+            background: #fafafa;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            border-radius: 8px;
+        }
+        .message.own {
+            background: #007bff;
+            color: white;
+            text-align: right;
+        }
+        .message.other {
+            background: #e9ecef;
+            color: #000;
+        }
+        .login-form, .register-form {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .flex {
+            display: flex;
+            gap: 10px;
+        }
+        .flex input {
+            flex: 1;
+        }
+        hr {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📱 Мессенджер</h1>
+
+    <!-- Регистрация -->
+    <div class="register-form">
+        <h3>📝 Регистрация</h3>
+        <div class="flex">
+            <input type="text" id="reg-name" placeholder="Имя">
+            <input type="number" id="reg-age" placeholder="Возраст">
+            <input type="password" id="reg-password" placeholder="Пароль">
+            <button id="register-btn">Зарегистрироваться</button>
+        </div>
+    </div>
+
+    <!-- Логин -->
+    <div class="login-form">
+        <h3>🔐 Вход</h3>
+        <div class="flex">
+            <input type="text" id="login-name" placeholder="Имя">
+            <input type="password" id="login-password" placeholder="Пароль">
+            <button id="login-btn">Войти</button>
+        </div>
+    </div>
+
+    <div id="status" class="status offline">Статус: Не авторизован</div>
+
+    <div id="auth-zone" style="display: none;">
+        <h3>💬 Диалоги</h3>
+        <div class="flex">
+            <input type="text" id="companion-name" placeholder="Имя собеседника">
+            <button id="create-dialog-btn">Создать диалог</button>
+        </div>
+
+        <select id="dialogs-list" size="5" style="width:100%; margin:10px 0; padding:10px;">
+            <option>— выберите диалог —</option>
+        </select>
+
+        <div class="messages" id="messages-area">
+            <div style="text-align:center; color:#888;">Выберите диалог</div>
+        </div>
+
+        <div class="flex">
+            <input type="text" id="message-text" placeholder="Введите сообщение" style="flex:1;">
+            <button id="send-msg-btn" disabled>Отправить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Конфиг
+    const API_BASE = "http://localhost:8000";
+    let token = null;
+    let ws = null;
+    let currentUser = null;
+    let currentDialogId = null;
+
+    // Элементы
+    const statusDiv = document.getElementById("status");
+    const authZone = document.getElementById("auth-zone");
+    const dialogsSelect = document.getElementById("dialogs-list");
+    const messagesArea = document.getElementById("messages-area");
+    const sendBtn = document.getElementById("send-msg-btn");
+    const messageInput = document.getElementById("message-text");
+
+    // Регистрация
+    document.getElementById("register-btn").onclick = async () => {
+        const name = document.getElementById("reg-name").value;
+        const age = document.getElementById("reg-age").value;
+        const password = document.getElementById("reg-password").value;
+        if (!name || !age || !password) return alert("Заполните все поля");
+
+        const res = await fetch(`${API_BASE}/users/register`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({name, age: parseInt(age), password})
+        });
+        if (res.ok) alert("Регистрация успешна! Теперь войдите.");
+        else alert("Ошибка регистрации");
+    };
+
+    // Логин
+    document.getElementById("login-btn").onclick = async () => {
+        const name = document.getElementById("login-name").value;
+        const password = document.getElementById("login-password").value;
+        if (!name || !password) return alert("Введите имя и пароль");
+
+        const formData = new URLSearchParams();
+        formData.append("username", name);
+        formData.append("password", password);
+        const res = await fetch(`${API_BASE}/users/login`, {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body: formData
+        });
+        if (res.ok) {
+            const data = await res.json();
+            token = data.access_token;
+            currentUser = name;
+            localStorage.setItem("token", token);
+            localStorage.setItem("user", currentUser);
+            statusDiv.textContent = `Статус: ✅ Авторизован как ${currentUser}`;
+            statusDiv.className = "status online";
+            authZone.style.display = "block";
+            connectWebSocket();
+            loadDialogs();
+        } else {
+            alert("Неверные имя или пароль");
+        }
+    };
+
+    // Проверка сохранённого токена при загрузке
+    (async function() {
+        const savedToken = localStorage.getItem("token");
+        const savedUser = localStorage.getItem("user");
+        if (savedToken && savedUser) {
+            token = savedToken;
+            currentUser = savedUser;
+            statusDiv.textContent = `Статус: ✅ Авторизован как ${currentUser}`;
+            statusDiv.className = "status online";
+            authZone.style.display = "block";
+            connectWebSocket();
+            await loadDialogs();
+        }
+    })();
+
+    // WebSocket
+    function connectWebSocket() {
+        if (!token) return;
+        ws = new WebSocket(`ws://localhost:8000/dialogs/ws/${token}`);
+        ws.onopen = () => console.log("WebSocket открыт");
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.event === "new_message") {
+                    // Если это сообщение в текущем диалоге — добавить в чат
+                    if (data.data.dialog_id === currentDialogId) {
+                        addMessageToChat(data.data);
+                    }
+                    // Также обновить список диалогов (чтобы видеть новое сообщение)
+                    loadDialogs();
+                }
+            } catch(e) {
+                console.warn("Не JSON от WebSocket:", event.data);
+            }
+        };
+        ws.onclose = () => console.log("WebSocket закрыт");
+    }
+
+    // Загрузить диалоги
+    async function loadDialogs() {
+        if (!token) return;
+        const res = await fetch(`${API_BASE}/dialogs/`, {
+            headers: {"Authorization": `Bearer ${token}`}
+        });
+        if (res.ok) {
+            const dialogs = await res.json();
+            dialogsSelect.innerHTML = "<option value=''>— выберите диалог —</option>";
+            dialogs.forEach(d => {
+                const option = document.createElement("option");
+                option.value = d.id;
+                option.textContent = `С ${d.companion_name} (последнее: ${d.last_message?.substring(0,30) || "нет"})`;
+                dialogsSelect.appendChild(option);
+            });
+        }
+    }
+
+    // Создать диалог
+    document.getElementById("create-dialog-btn").onclick = async () => {
+        const name = document.getElementById("companion-name").value;
+        if (!name) return alert("Введите имя собеседника");
+        // сначала найти id пользователя по имени
+        const usersRes = await fetch(`${API_BASE}/users/`);
+        if (usersRes.ok) {
+            const users = await usersRes.json();
+            const companion = users.find(u => u.name === name);
+            if (!companion) return alert("Пользователь не найден");
+            const res = await fetch(`${API_BASE}/dialogs/`, {
+                method: "POST",
+                headers: {"Authorization": `Bearer ${token}`, "Content-Type": "application/json"},
+                body: JSON.stringify({user_id_2: companion.id})
+            });
+            if (res.ok) {
+                alert("Диалог создан");
+                await loadDialogs();
+            } else {
+                alert("Ошибка создания диалога");
+            }
+        }
+    };
+
+    // Выбор диалога
+    dialogsSelect.onchange = async () => {
+        const dialogId = dialogsSelect.value;
+        if (!dialogId) return;
+        currentDialogId = parseInt(dialogId);
+        sendBtn.disabled = false;
+        await loadMessages(dialogId);
+    };
+
+    // Загрузить сообщения в диалоге
+    async function loadMessages(dialogId) {
+        const res = await fetch(`${API_BASE}/dialogs/${dialogId}/messages?limit=100`, {
+            headers: {"Authorization": `Bearer ${token}`}
+        });
+        if (res.ok) {
+            const messages = await res.json();
+            messagesArea.innerHTML = "";
+            messages.reverse().forEach(msg => {
+                addMessageToChat(msg, false);
+            });
+        }
+    }
+
+    function addMessageToChat(msg, fromWebsocket = false) {
+        const div = document.createElement("div");
+        div.className = `message ${msg.sender_id === currentUser ? 'own' : 'other'}`;
+        div.innerHTML = `<strong>${msg.sender_name || (msg.sender_id === currentUser ? currentUser : "Собеседник")}:</strong> ${msg.text}<br><small>${new Date(msg.created_at).toLocaleTimeString()}</small>`;
+        messagesArea.appendChild(div);
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    // Отправить сообщение
+    sendBtn.onclick = async () => {
+        if (!currentDialogId) return alert("Выберите диалог");
+        const text = messageInput.value.trim();
+        if (!text) return;
+        const res = await fetch(`${API_BASE}/dialogs/${currentDialogId}/messages`, {
+            method: "POST",
+            headers: {"Authorization": `Bearer ${token}`, "Content-Type": "application/json"},
+            body: JSON.stringify({text})
+        });
+        if (res.ok) {
+            messageInput.value = "";
+            // сообщение добавится через WebSocket или можно перегрузить диалог
+            await loadMessages(currentDialogId);
+            // обновить список диалогов (последнее сообщение)
+            loadDialogs();
+        } else {
+            alert("Ошибка отправки");
+        }
+    };
+</script>
+</body>
+</html>
