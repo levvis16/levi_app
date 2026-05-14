@@ -571,7 +571,7 @@
 </div>
 
 <script>
-    const API_BASE = "http://localhost:8000";
+    const API_BASE = "";
     let token = null;
     let currentUser = null;
     let currentDialogId = null;
@@ -666,7 +666,8 @@
     // WebSocket
     function connectWebSocket() {
         if (!token) return;
-        ws = new WebSocket(`ws://localhost:8000/dialogs/ws/${token}`);
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        ws = new WebSocket(`${protocol}//${window.location.host}/dialogs/ws/${token}`);
         ws.onopen = () => console.log('WebSocket connected');
         ws.onmessage = (event) => {
             try {
