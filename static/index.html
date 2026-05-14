@@ -2,334 +2,826 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мессенджер — тест WebSocket</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Levi</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #0a0a0a;
+            height: 100vh;
+            overflow: hidden;
         }
-        .container {
-            background: white;
+
+        /* Страницы */
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .page.hidden {
+            transform: translateX(100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Страница авторизации */
+        .auth-page {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: rgba(30, 30, 35, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 28px;
+            padding: 40px 32px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .auth-logo span {
+            font-size: 48px;
+        }
+
+        .auth-logo h1 {
+            color: white;
+            font-size: 28px;
+            margin-top: 12px;
+            font-weight: 600;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 28px;
+            background: rgba(0,0,0,0.3);
+            padding: 4px;
+            border-radius: 16px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            color: #8e8e93;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
             border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.2s;
         }
-        input, button {
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 14px;
+
+        .auth-tab.active {
+            background: #2a2a2e;
+            color: #34c759;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
-        button {
-            background: #007bff;
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .auth-form input {
+            width: 100%;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            background: #1c1c1e;
+            border: 1px solid #2c2c2e;
+            border-radius: 14px;
+            font-size: 16px;
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .auth-form input:focus {
+            outline: none;
+            border-color: #34c759;
+            background: #252528;
+        }
+
+        .auth-form input::placeholder {
+            color: #636366;
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 14px;
+            background: #34c759;
             color: white;
             border: none;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            margin-top: 8px;
+            transition: all 0.2s;
         }
-        button:hover {
-            background: #0056b3;
+
+        .auth-btn:hover {
+            background: #2ea64f;
+            transform: scale(0.98);
         }
-        .status {
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            font-weight: bold;
-        }
-        .status.online {
-            background: #d4edda;
-            color: #155724;
-        }
-        .status.offline {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .messages {
-            height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 10px;
-            margin: 20px 0;
-            background: #fafafa;
-        }
-        .message {
-            margin-bottom: 10px;
-            padding: 5px 10px;
-            border-radius: 8px;
-        }
-        .message.own {
-            background: #007bff;
-            color: white;
-            text-align: right;
-        }
-        .message.other {
-            background: #e9ecef;
-            color: #000;
-        }
-        .login-form, .register-form {
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-        .flex {
+
+        /* Основной чат (Telegram стиль) */
+        .chat-page {
+            background: #0a0a0a;
             display: flex;
-            gap: 10px;
+            flex-direction: column;
         }
-        .flex input {
+
+        /* Шапка чата */
+        .chat-header {
+            background: #1f1f23;
+            border-bottom: 0.5px solid #2c2c2e;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        .logout-btn {
+            background: #2c2c2e;
+            border: none;
+            color: #ff3b30;
+            font-size: 24px;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #3a3a3c;
+            transform: scale(0.95);
+        }
+
+        .chat-title {
             flex: 1;
         }
-        hr {
-            margin: 20px 0;
+
+        .chat-title h2 {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .chat-title p {
+            color: #8e8e93;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .user-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #2c2c2e;
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
+
+        .user-status span {
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            background: #34c759;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        /* Диалоги (сайдбар) */
+        .dialogs-sidebar {
+            background: #111112;
+            border-right: 0.5px solid #2c2c2e;
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .dialogs-header {
+            padding: 16px 20px;
+            border-bottom: 0.5px solid #2c2c2e;
+        }
+
+        .dialogs-header h3 {
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .create-dialog {
+            background: #1c1c1e;
+            margin: 12px 16px;
+            padding: 8px;
+            border-radius: 12px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .create-dialog input {
+            flex: 1;
+            padding: 10px 12px;
+            background: #2c2c2e;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .create-dialog input::placeholder {
+            color: #636366;
+        }
+
+        .create-dialog button {
+            background: #34c759;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dialogs-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 8px;
+        }
+
+        .dialog-item {
+            padding: 12px 12px;
+            margin: 4px 0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dialog-item:hover {
+            background: #1c1c1e;
+        }
+
+        .dialog-item.active {
+            background: #2c2c2e;
+        }
+
+        .dialog-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #34c759, #28a745);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .dialog-info {
+            flex: 1;
+        }
+
+        .dialog-name {
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .dialog-last-msg {
+            color: #8e8e93;
+            font-size: 13px;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        /* Область сообщений */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message {
+            max-width: 70%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.own {
+            align-self: flex-end;
+        }
+
+        .message.other {
+            align-self: flex-start;
+        }
+
+        .message-bubble {
+            padding: 10px 14px;
+            border-radius: 20px;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .message.own .message-bubble {
+            background: #34c759;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.other .message-bubble {
+            background: #1c1c1e;
+            color: white;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-name {
+            font-size: 12px;
+            color: #8e8e93;
+            margin-bottom: 4px;
+            padding-left: 12px;
+        }
+
+        .message-time {
+            font-size: 10px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 4px;
+            padding-left: 12px;
+        }
+
+        .message-input-area {
+            background: #1f1f23;
+            padding: 12px 20px;
+            display: flex;
+            gap: 12px;
+            border-top: 0.5px solid #2c2c2e;
+        }
+
+        .message-input-area input {
+            flex: 1;
+            padding: 12px 16px;
+            background: #2c2c2e;
+            border: none;
+            border-radius: 24px;
+            color: white;
+            font-size: 15px;
+        }
+
+        .message-input-area input:focus {
+            outline: none;
+            background: #3a3a3c;
+        }
+
+        .message-input-area button {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #34c759;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .message-input-area button:hover:not(:disabled) {
+            background: #2ea64f;
+            transform: scale(0.95);
+        }
+
+        .message-input-area button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #636366;
+            padding: 40px;
+        }
+
+        /* Скроллбар */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1c1c1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3a3a3c;
+            border-radius: 3px;
+        }
+
+        /* Адаптив */
+        @media (max-width: 768px) {
+            .chat-page {
+                flex-direction: column;
+            }
+            .dialogs-sidebar {
+                width: 100%;
+                height: 40%;
+                border-right: none;
+                border-bottom: 0.5px solid #2c2c2e;
+            }
+            .message {
+                max-width: 85%;
+            }
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>📱 Мессенджер</h1>
 
-    <!-- Регистрация -->
-    <div class="register-form">
-        <h3>📝 Регистрация</h3>
-        <div class="flex">
-            <input type="text" id="reg-name" placeholder="Имя">
-            <input type="number" id="reg-age" placeholder="Возраст">
-            <input type="password" id="reg-password" placeholder="Пароль">
-            <button id="register-btn">Зарегистрироваться</button>
+<!-- Страница авторизации -->
+<div id="authPage" class="page auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <span>💬</span>
+                <h1>Levi</h1>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Вход</button>
+                <button class="auth-tab" data-tab="register">Регистрация</button>
+            </div>
+
+            <!-- Форма входа -->
+            <div id="loginForm" class="auth-form active">
+                <input type="text" id="loginName" placeholder="Имя пользователя">
+                <input type="password" id="loginPassword" placeholder="Пароль">
+                <button class="auth-btn" id="doLoginBtn">Войти</button>
+            </div>
+
+            <!-- Форма регистрации -->
+            <div id="registerForm" class="auth-form">
+                <input type="text" id="regName" placeholder="Имя пользователя">
+                <input type="number" id="regAge" placeholder="Возраст">
+                <input type="password" id="regPassword" placeholder="Пароль">
+                <button class="auth-btn" id="doRegisterBtn">Зарегистрироваться</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Страница чата -->
+<div id="chatPage" class="page chat-page hidden">
+    <div class="chat-header">
+        <button class="logout-btn" id="logoutBtn">←</button>
+        <div class="chat-title">
+            <h2>Мессенджер</h2>
+            <p>Выберите диалог</p>
+        </div>
+        <div class="user-status">
+            <div class="online-dot"></div>
+            <span id="currentUserName">Пользователь</span>
         </div>
     </div>
 
-    <!-- Логин -->
-    <div class="login-form">
-        <h3>🔐 Вход</h3>
-        <div class="flex">
-            <input type="text" id="login-name" placeholder="Имя">
-            <input type="password" id="login-password" placeholder="Пароль">
-            <button id="login-btn">Войти</button>
-        </div>
-    </div>
-
-    <div id="status" class="status offline">Статус: Не авторизован</div>
-
-    <div id="auth-zone" style="display: none;">
-        <h3>💬 Диалоги</h3>
-        <div class="flex">
-            <input type="text" id="companion-name" placeholder="Имя собеседника">
-            <button id="create-dialog-btn">Создать диалог</button>
+    <div style="display: flex; flex: 1; overflow: hidden;">
+        <!-- Сайдбар с диалогами -->
+        <div class="dialogs-sidebar">
+            <div class="dialogs-header">
+                <h3>Диалоги</h3>
+            </div>
+            <div class="create-dialog">
+                <input type="text" id="companionName" placeholder="Имя собеседника">
+                <button id="createDialogBtn">+</button>
+            </div>
+            <div class="dialogs-list" id="dialogsList">
+                <div class="empty-state">Нет диалогов</div>
+            </div>
         </div>
 
-        <select id="dialogs-list" size="5" style="width:100%; margin:10px 0; padding:10px;">
-            <option>— выберите диалог —</option>
-        </select>
-
-        <div class="messages" id="messages-area">
-            <div style="text-align:center; color:#888;">Выберите диалог</div>
-        </div>
-
-        <div class="flex">
-            <input type="text" id="message-text" placeholder="Введите сообщение" style="flex:1;">
-            <button id="send-msg-btn" disabled>Отправить</button>
+        <!-- Область чата -->
+        <div class="chat-main">
+            <div class="messages-container" id="messagesContainer">
+                <div class="empty-state">Выберите диалог, чтобы начать общение</div>
+            </div>
+            <div class="message-input-area">
+                <input type="text" id="messageInput" placeholder="Сообщение" disabled>
+                <button id="sendMessageBtn" disabled>→</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Конфиг
     const API_BASE = "http://localhost:8000";
     let token = null;
-    let ws = null;
     let currentUser = null;
     let currentDialogId = null;
+    let ws = null;
 
-    // Элементы
-    const statusDiv = document.getElementById("status");
-    const authZone = document.getElementById("auth-zone");
-    const dialogsSelect = document.getElementById("dialogs-list");
-    const messagesArea = document.getElementById("messages-area");
-    const sendBtn = document.getElementById("send-msg-btn");
-    const messageInput = document.getElementById("message-text");
+    // DOM элементы
+    const authPage = document.getElementById('authPage');
+    const chatPage = document.getElementById('chatPage');
+    const currentUserNameSpan = document.getElementById('currentUserName');
+    const dialogsList = document.getElementById('dialogsList');
+    const messagesContainer = document.getElementById('messagesContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendMessageBtn');
+
+    // Переключение табов
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const tabName = tab.dataset.tab;
+            document.getElementById('loginForm').classList.toggle('active', tabName === 'login');
+            document.getElementById('registerForm').classList.toggle('active', tabName === 'register');
+        });
+    });
 
     // Регистрация
-    document.getElementById("register-btn").onclick = async () => {
-        const name = document.getElementById("reg-name").value;
-        const age = document.getElementById("reg-age").value;
-        const password = document.getElementById("reg-password").value;
-        if (!name || !age || !password) return alert("Заполните все поля");
+    document.getElementById('doRegisterBtn').onclick = async () => {
+        const name = document.getElementById('regName').value;
+        const age = document.getElementById('regAge').value;
+        const password = document.getElementById('regPassword').value;
+        if (!name || !age || !password) return alert('Заполните все поля');
 
         const res = await fetch(`${API_BASE}/users/register`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({name, age: parseInt(age), password})
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, age: parseInt(age), password })
         });
-        if (res.ok) alert("Регистрация успешна! Теперь войдите.");
-        else alert("Ошибка регистрации");
+        if (res.ok) {
+            alert('Регистрация успешна! Теперь войдите');
+            document.querySelector('.auth-tab[data-tab="login"]').click();
+        } else {
+            alert('Ошибка регистрации');
+        }
     };
 
     // Логин
-    document.getElementById("login-btn").onclick = async () => {
-        const name = document.getElementById("login-name").value;
-        const password = document.getElementById("login-password").value;
-        if (!name || !password) return alert("Введите имя и пароль");
+    document.getElementById('doLoginBtn').onclick = async () => {
+        const name = document.getElementById('loginName').value;
+        const password = document.getElementById('loginPassword').value;
+        if (!name || !password) return alert('Введите имя и пароль');
 
         const formData = new URLSearchParams();
-        formData.append("username", name);
-        formData.append("password", password);
+        formData.append('username', name);
+        formData.append('password', password);
         const res = await fetch(`${API_BASE}/users/login`, {
-            method: "POST",
-            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData
         });
         if (res.ok) {
             const data = await res.json();
             token = data.access_token;
             currentUser = name;
-            localStorage.setItem("token", token);
-            localStorage.setItem("user", currentUser);
-            statusDiv.textContent = `Статус: ✅ Авторизован как ${currentUser}`;
-            statusDiv.className = "status online";
-            authZone.style.display = "block";
-            connectWebSocket();
-            loadDialogs();
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', currentUser);
+            showChatPage();
         } else {
-            alert("Неверные имя или пароль");
+            alert('Неверные имя или пароль');
         }
     };
 
-    // Проверка сохранённого токена при загрузке
-    (async function() {
-        const savedToken = localStorage.getItem("token");
-        const savedUser = localStorage.getItem("user");
-        if (savedToken && savedUser) {
-            token = savedToken;
-            currentUser = savedUser;
-            statusDiv.textContent = `Статус: ✅ Авторизован как ${currentUser}`;
-            statusDiv.className = "status online";
-            authZone.style.display = "block";
-            connectWebSocket();
-            await loadDialogs();
-        }
-    })();
+    // Выход
+    document.getElementById('logoutBtn').onclick = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        if (ws) ws.close();
+        token = null;
+        currentUser = null;
+        currentDialogId = null;
+        authPage.classList.remove('hidden');
+        chatPage.classList.add('hidden');
+    };
+
+    function showChatPage() {
+        authPage.classList.add('hidden');
+        chatPage.classList.remove('hidden');
+        currentUserNameSpan.textContent = currentUser;
+        connectWebSocket();
+        loadDialogs();
+    }
 
     // WebSocket
     function connectWebSocket() {
         if (!token) return;
         ws = new WebSocket(`ws://localhost:8000/dialogs/ws/${token}`);
-        ws.onopen = () => console.log("WebSocket открыт");
+        ws.onopen = () => console.log('WebSocket connected');
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                if (data.event === "new_message") {
-                    // Если это сообщение в текущем диалоге — добавить в чат
+                if (data.event === 'new_message') {
                     if (data.data.dialog_id === currentDialogId) {
                         addMessageToChat(data.data);
                     }
-                    // Также обновить список диалогов (чтобы видеть новое сообщение)
-                    loadDialogs();
+                    loadDialogs(); // обновляем список диалогов
                 }
             } catch(e) {
-                console.warn("Не JSON от WebSocket:", event.data);
+                console.warn('WebSocket message error', e);
             }
         };
-        ws.onclose = () => console.log("WebSocket закрыт");
+        ws.onclose = () => console.log('WebSocket closed');
     }
 
-    // Загрузить диалоги
+    // Загрузка диалогов
     async function loadDialogs() {
         if (!token) return;
         const res = await fetch(`${API_BASE}/dialogs/`, {
-            headers: {"Authorization": `Bearer ${token}`}
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             const dialogs = await res.json();
-            dialogsSelect.innerHTML = "<option value=''>— выберите диалог —</option>";
-            dialogs.forEach(d => {
-                const option = document.createElement("option");
-                option.value = d.id;
-                option.textContent = `С ${d.companion_name} (последнее: ${d.last_message?.substring(0,30) || "нет"})`;
-                dialogsSelect.appendChild(option);
+            if (dialogs.length === 0) {
+                dialogsList.innerHTML = '<div class="empty-state">Нет диалогов</div>';
+                return;
+            }
+            dialogsList.innerHTML = dialogs.map(d => `
+                <div class="dialog-item ${currentDialogId === d.id ? 'active' : ''}" data-dialog-id="${d.id}">
+                    <div class="dialog-avatar">${d.companion_name[0].toUpperCase()}</div>
+                    <div class="dialog-info">
+                        <div class="dialog-name">${escapeHtml(d.companion_name)}</div>
+                        <div class="dialog-last-msg">${escapeHtml(d.last_message?.substring(0, 40) || 'Нет сообщений')}</div>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.querySelectorAll('.dialog-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const dialogId = parseInt(el.dataset.dialogId);
+                    selectDialog(dialogId);
+                });
             });
         }
     }
 
-    // Создать диалог
-    document.getElementById("create-dialog-btn").onclick = async () => {
-        const name = document.getElementById("companion-name").value;
-        if (!name) return alert("Введите имя собеседника");
-        // сначала найти id пользователя по имени
-        const usersRes = await fetch(`${API_BASE}/users/`);
-        if (usersRes.ok) {
-            const users = await usersRes.json();
-            const companion = users.find(u => u.name === name);
-            if (!companion) return alert("Пользователь не найден");
-            const res = await fetch(`${API_BASE}/dialogs/`, {
-                method: "POST",
-                headers: {"Authorization": `Bearer ${token}`, "Content-Type": "application/json"},
-                body: JSON.stringify({user_id_2: companion.id})
-            });
-            if (res.ok) {
-                alert("Диалог создан");
-                await loadDialogs();
-            } else {
-                alert("Ошибка создания диалога");
-            }
-        }
-    };
-
-    // Выбор диалога
-    dialogsSelect.onchange = async () => {
-        const dialogId = dialogsSelect.value;
-        if (!dialogId) return;
-        currentDialogId = parseInt(dialogId);
+    async function selectDialog(dialogId) {
+        currentDialogId = dialogId;
+        messageInput.disabled = false;
         sendBtn.disabled = false;
         await loadMessages(dialogId);
-    };
+        await loadDialogs(); // обновить активный класс
+    }
 
-    // Загрузить сообщения в диалоге
     async function loadMessages(dialogId) {
         const res = await fetch(`${API_BASE}/dialogs/${dialogId}/messages?limit=100`, {
-            headers: {"Authorization": `Bearer ${token}`}
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
             const messages = await res.json();
-            messagesArea.innerHTML = "";
-            messages.reverse().forEach(msg => {
-                addMessageToChat(msg, false);
-            });
+            messagesContainer.innerHTML = '';
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = '<div class="empty-state">Нет сообщений. Напишите что-нибудь!</div>';
+                return;
+            }
+            messages.reverse().forEach(msg => addMessageToChat(msg, false));
         }
     }
 
     function addMessageToChat(msg, fromWebsocket = false) {
-        const div = document.createElement("div");
-        div.className = `message ${msg.sender_id === currentUser ? 'own' : 'other'}`;
-        div.innerHTML = `<strong>${msg.sender_name || (msg.sender_id === currentUser ? currentUser : "Собеседник")}:</strong> ${msg.text}<br><small>${new Date(msg.created_at).toLocaleTimeString()}</small>`;
-        messagesArea.appendChild(div);
-        messagesArea.scrollTop = messagesArea.scrollHeight;
+        const isOwn = msg.sender_name === currentUser;
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
+        messageDiv.innerHTML = `
+            <div class="message-name">${escapeHtml(msg.sender_name || (isOwn ? currentUser : 'Собеседник'))}</div>
+            <div class="message-bubble">${escapeHtml(msg.text)}</div>
+            <div class="message-time">${new Date(msg.created_at).toLocaleTimeString()}</div>
+        `;
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    // Отправить сообщение
-    sendBtn.onclick = async () => {
-        if (!currentDialogId) return alert("Выберите диалог");
-        const text = messageInput.value.trim();
-        if (!text) return;
-        const res = await fetch(`${API_BASE}/dialogs/${currentDialogId}/messages`, {
-            method: "POST",
-            headers: {"Authorization": `Bearer ${token}`, "Content-Type": "application/json"},
-            body: JSON.stringify({text})
-        });
-        if (res.ok) {
-            messageInput.value = "";
-            // сообщение добавится через WebSocket или можно перегрузить диалог
-            await loadMessages(currentDialogId);
-            // обновить список диалогов (последнее сообщение)
-            loadDialogs();
-        } else {
-            alert("Ошибка отправки");
+    // Создание диалога
+    document.getElementById('createDialogBtn').onclick = async () => {
+        const name = document.getElementById('companionName').value;
+        if (!name) return alert('Введите имя собеседника');
+        
+        const usersRes = await fetch(`${API_BASE}/users/`);
+        if (usersRes.ok) {
+            const users = await usersRes.json();
+            const companion = users.find(u => u.name === name);
+            if (!companion) return alert('Пользователь не найден');
+            
+            const res = await fetch(`${API_BASE}/dialogs/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id_2: companion.id })
+            });
+            if (res.ok) {
+                document.getElementById('companionName').value = '';
+                await loadDialogs();
+            } else {
+                alert('Ошибка создания диалога');
+            }
         }
     };
+
+    // Отправка сообщения
+    sendBtn.onclick = async () => {
+        if (!currentDialogId) return alert('Выберите диалог');
+        const text = messageInput.value.trim();
+        if (!text) return;
+        
+        const res = await fetch(`${API_BASE}/dialogs/${currentDialogId}/messages`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        });
+        if (res.ok) {
+            messageInput.value = '';
+            await loadMessages(currentDialogId);
+            await loadDialogs();
+        } else {
+            alert('Ошибка отправки');
+        }
+    };
+
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && sendBtn.disabled === false) {
+            sendBtn.click();
+        }
+    });
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // Автоматический вход при загрузке
+    (async function() {
+        const savedToken = localStorage.getItem('token');
+        const savedUser = localStorage.getItem('user');
+        if (savedToken && savedUser) {
+            token = savedToken;
+            currentUser = savedUser;
+            showChatPage();
+        }
+    })();
 </script>
 </body>
 </html>
