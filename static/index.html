@@ -736,6 +736,9 @@
                 return;
             }
             messages.reverse().forEach(msg => addMessageToChat(msg, false));
+            if (messagesContainer.children.length > 0) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
         }
     }
 
