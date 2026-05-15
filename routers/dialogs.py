@@ -4,6 +4,7 @@ from sqlalchemy import select, desc, func
 from typing import List
 from sqlalchemy.orm import selectinload
 
+from datetime import datetime, timedelta, timezone
 from database.database import get_db
 from database.models import User, Dialog, Message, user_dialog
 from database.schemas import DialogCreate, DialogOut, MessageCreate, MessageOut
@@ -80,48 +81,62 @@ async def create_or_get_dialog(
         companion_name=companion.name,
     )
 
-@router.post('/{dialog_id}/messages', response_model=MessageOut, status_code=status.HTTP_201_CREATED)
-async def send_message(dialog_id: int, msg_data: MessageCreate, db: AsyncSession=Depends(get_db),
-                        current_user: User = Depends(get_current_user)):
+
+@router.post("/{dialog_id}/messages", response_model=MessageOut, status_code=status.HTTP_201_CREATED)
+async def send_message(
+    dialog_id: int,
+    msg_data: MessageCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     dialog = await db.get(Dialog, dialog_id)
     if not dialog:
-        raise HTTPException(status_code=404, detail="chat not created")
-    await db.refresh(dialog, attribute_names=['users'])
+        raise HTTPException(status_code=404, detail="Dialog not found")
+    
+    await db.refresh(dialog, attribute_names=["users"])
     if current_user not in dialog.users:
-        raise HTTPException(status_code=403, detail="the not your chat")
+        raise HTTPException(status_code=403, detail="Not your dialog")
     
     new_msg = Message(
-        dialog_id = dialog.id,
-        sender_id = current_user.id,
-        text = msg_data.text,
+        dialog_id=dialog.id,
+        sender_id=current_user.id,
+        text=msg_data.text,
+        created_at=datetime.now()
     )
     db.add(new_msg)
     await db.commit()
     await db.refresh(new_msg)
-
-    result = await db.execute(
-        select(Dialog).where(Dialog.id == dialog_id).options(selectinload(Dialog.users))
-    )
-    dialog = result.scalar_one()
+    
     recipient = next((u for u in dialog.users if u.id != current_user.id), None)
 
-    if recipient and recipient.id in active_connections:
-        ws = active_connections[recipient.id]
+    if recipient and recipient.name in active_connections:
+
+        ws = active_connections[recipient.name]
         await ws.send_json({
             "event": "new_message",
             "data": {
-                "message_id": new_msg.id,
+                "id": new_msg.id,
                 "dialog_id": dialog_id,
                 "sender_id": current_user.id,
                 "sender_name": current_user.name,
                 "text": new_msg.text,
-                "created_at": new_msg.created_at.isoformat()
+                "created_at": new_msg.created_at.isoformat(),
+                "is_read": new_msg.is_read
             }
         })
+    else:
+        print("Recipient not in active_connections")
+    return MessageOut(
+        id=new_msg.id,
+        dialog_id=new_msg.dialog_id,
+        sender_id=new_msg.sender_id,
+        sender_name=current_user.name,
+        text=new_msg.text,
+        created_at=new_msg.created_at,
+        is_read=new_msg.is_read
+    )
 
-    return new_msg
-
-@router.get("/{dialog_id}/messages", response_model=List[MessageOut])
+@router.get("/{dialog_id}/messages", response_model=list[MessageOut])
 async def get_messages(
     dialog_id: int,
     limit: int = 50,
@@ -129,11 +144,32 @@ async def get_messages(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    dialog = await db.get(Dialog, dialog_id)
+    if not dialog:
+        raise HTTPException(status_code=404, detail="Dialog not found")
+    await db.refresh(dialog, attribute_names=["users"])
+    if current_user not in dialog.users:
+        raise HTTPException(status_code=403, detail="Not your dialog")
+    
     stmt = select(Message).where(Message.dialog_id == dialog_id).order_by(desc(Message.created_at)).offset(offset).limit(limit)
     result = await db.execute(stmt)
     messages = result.scalars().all()
-    return messages
-
+    
+    result_messages = []
+    for msg in messages:
+        sender = next((u for u in dialog.users if u.id == msg.sender_id), None)
+        sender_name = sender.name if sender else "Unknown"
+        result_messages.append(MessageOut(
+            id=msg.id,
+            dialog_id=msg.dialog_id,
+            sender_id=msg.sender_id,
+            sender_name=sender_name,
+            text=msg.text,
+            created_at=msg.created_at,
+            is_read=msg.is_read
+        ))
+    
+    return result_messages
 @router.websocket("/ws/{token}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
     try:

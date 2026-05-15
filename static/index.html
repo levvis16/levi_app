@@ -668,18 +668,24 @@
         if (!token) return;
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         ws = new WebSocket(`${protocol}//${window.location.host}/dialogs/ws/${token}`);
-        ws.onopen = () => console.log('WebSocket connected');
+        ws.onopen = () => {
+        console.log("WebSocket open, sending ping");
+        ws.send("ping");
+    };
         ws.onmessage = (event) => {
+            console.log("📨 WebSocket получил:", event.data);
             try {
                 const data = JSON.parse(event.data);
                 if (data.event === 'new_message') {
-                    if (data.data.dialog_id === currentDialogId) {
+                    // Если открыт тот же диалог — добавляем сообщение в чат
+                    if (currentDialogId === data.data.dialog_id) {
                         addMessageToChat(data.data);
                     }
+                    // Обновляем список диалогов, чтобы показать последнее сообщение
                     loadDialogs();
                 }
             } catch(e) {
-                console.warn('WebSocket message error', e);
+                console.warn('Ошибка парсинга WebSocket сообщения', e);
             }
         };
         ws.onclose = () => console.log('WebSocket closed');
@@ -780,7 +786,6 @@
         }
     };
 
-    // Отправка сообщения
     sendBtn.onclick = async () => {
         if (!currentDialogId) return alert('Выберите диалог');
         const text = messageInput.value.trim();
