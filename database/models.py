@@ -1,7 +1,7 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import Table, Column, ForeignKey, Integer, Text
 from sqlalchemy import String, CheckConstraint
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 class Base(DeclarativeBase):
     pass
@@ -24,7 +24,7 @@ class Dialog(Base):
     __tablename__ = "dialogs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone(timedelta(hours=3))))
 
     users: Mapped[list["User"]] = relationship(secondary=user_dialog, back_populates="dialogs")
     messages: Mapped[list["Message"]] = relationship(back_populates="dialog", cascade="all, delete-orphan")
@@ -36,7 +36,7 @@ class Message(Base):
     dialog_id: Mapped[int] = mapped_column(ForeignKey("dialogs.id"))
     sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone(timedelta(hours=3))))
     is_read: Mapped[bool] = mapped_column(default=False)
 
     dialog: Mapped["Dialog"] = relationship(back_populates="messages")

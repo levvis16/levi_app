@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 import os
 from dotenv import load_dotenv
 from fastapi.security import OAuth2PasswordRequestForm
+from routers.dialogs import active_connections
 
 load_dotenv()
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
