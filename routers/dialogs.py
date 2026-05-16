@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func
+from sqlalchemy import select, desc, func, update
 from typing import List
 from sqlalchemy.orm import selectinload
 
@@ -18,7 +18,8 @@ active_connections: dict[int, WebSocket] = {}
 async def get_my_dialogs(db: AsyncSession=Depends(get_db), current_user: User = Depends(get_current_user)):
     stmt = select(Dialog).join(Dialog.users).where(User.id == current_user.id).options(
         selectinload(Dialog.messages),
-        selectinload(Dialog.users)
+        selectinload(Dialog.users),
+        
     )
     result = await db.execute(stmt)
     dialogs = result.scalars().all()
@@ -29,6 +30,13 @@ async def get_my_dialogs(db: AsyncSession=Depends(get_db), current_user: User = 
         if not companion:
             continue
 
+        unread_count = await db.scalar(
+            select(func.count(Message.id))
+            .where(Message.dialog_id == dialog.id)
+            .where(Message.sender_id != current_user.id)
+            .where(Message.is_read == False)
+        )
+
         last_msg = dialog.messages[-1].text if dialog.messages else None
         result_list.append(DialogOut(
             id = dialog.id,
@@ -36,6 +44,7 @@ async def get_my_dialogs(db: AsyncSession=Depends(get_db), current_user: User = 
             last_message=last_msg,
             companion_id= companion.id,
             companion_name= companion.name,
+            unread_count=unread_count
         ))
     return result_list
 
@@ -80,6 +89,25 @@ async def create_or_get_dialog(
         companion_id=companion.id,
         companion_name=companion.name,
     )
+
+@router.delete('/{dialog_id}', status_code=status.HTTP_204_NO_CONTENT)
+async def delete_dialog(
+    dialog_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    dialog = await db.get(Dialog, dialog_id)
+    if not dialog:
+        raise HTTPException(status_code=404, detail="Dialog not found")
+    
+    await db.refresh(dialog, attribute_names=["users"])
+    if current_user not in dialog.users:
+        raise HTTPException(status_code=403, detail="You are not a member of this dialog")
+    
+    await db.delete(dialog)
+    await db.commit()
+    
+    return None
 
 
 @router.post("/{dialog_id}/messages", response_model=MessageOut, status_code=status.HTTP_201_CREATED)
@@ -170,6 +198,7 @@ async def get_messages(
         ))
     
     return result_messages
+
 @router.websocket("/ws/{token}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
     try:
@@ -185,7 +214,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     
     await websocket.accept()
     active_connections[user_id] = websocket
-    print(f"✅ User {user_id} connected. Total active: {len(active_connections)}")
+    print(f" User {user_id} connected. Total active: {len(active_connections)}")
     
     try:
         while True:
@@ -197,4 +226,19 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     except WebSocketDisconnect:
         if user_id in active_connections:
             del active_connections[user_id]
-        print(f"🔌 User {user_id} disconnected")
+        print(f" User {user_id} disconnected")
+
+@router.post('/{dialog_id}/read')
+async def mark_as_read(
+    dialog_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    await db.execute(update(Message)
+                     .where(Message.dialog_id == dialog_id)
+                     .where(Message.sender_id != current_user.id)
+                     .where(Message.is_read == False)
+                     .values(is_read = True)
+                     )
+    await db.commit()
+    return {"status": "ok"}

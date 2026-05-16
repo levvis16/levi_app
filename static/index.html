@@ -396,6 +396,18 @@
             border-bottom-left-radius: 4px;
         }
 
+        .unread-badge {
+            background: #34c759;
+            color: white;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+            margin-left: 8px;
+        }
+
         .message-name {
             font-size: 12px;
             color: #8e8e93;
@@ -492,6 +504,65 @@
             .message {
                 max-width: 85%;
             }
+            /* Выпадающее меню */
+            
+        }
+        .dialog-item {
+            position: relative;
+        }
+
+        .dialog-menu {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #2c2c2e;
+            border: none;
+            border-radius: 50%;
+            color: #8e8e93;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .dialog-menu:hover {
+            background: #3a3a3c;
+            color: #ffffff;
+        }
+
+        .dropdown-menu {
+            position: fixed;
+            background: #1c1c1e;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            overflow: hidden;
+            z-index: 1000;
+            min-width: 160px;
+            border: 0.5px solid #3a3a3c;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item.delete {
+            color: #ff453a;
+        }
+
+        .dropdown-item.delete:hover {
+            background: #3a3a3c;
+            color: #ff453a;
         }
     </style>
 </head>
@@ -677,12 +748,11 @@
             try {
                 const data = JSON.parse(event.data);
                 if (data.event === 'new_message') {
-                    // Если открыт тот же диалог — добавляем сообщение в чат
                     if (currentDialogId === data.data.dialog_id) {
                         addMessageToChat(data.data);
+                    }else{
+                        loadDialogs();
                     }
-                    // Обновляем список диалогов, чтобы показать последнее сообщение
-                    loadDialogs();
                 }
             } catch(e) {
                 console.warn('Ошибка парсинга WebSocket сообщения', e);
@@ -691,7 +761,6 @@
         ws.onclose = () => console.log('WebSocket closed');
     }
 
-    // Загрузка диалогов
     async function loadDialogs() {
         if (!token) return;
         const res = await fetch(`${API_BASE}/dialogs/`, {
@@ -710,16 +779,76 @@
                         <div class="dialog-name">${escapeHtml(d.companion_name)}</div>
                         <div class="dialog-last-msg">${escapeHtml(d.last_message?.substring(0, 40) || 'Нет сообщений')}</div>
                     </div>
+                    ${d.unread_count > 0 ? `<div class="unread-badge">${d.unread_count}</div>` : ''}
+                    <button class="dialog-menu" data-dialog-id="${d.id}">⋯</button>
                 </div>
             `).join('');
             
             document.querySelectorAll('.dialog-item').forEach(el => {
-                el.addEventListener('click', () => {
-                    const dialogId = parseInt(el.dataset.dialogId);
+                const dialogId = parseInt(el.dataset.dialogId);
+                const menuBtn = el.querySelector('.dialog-menu');
+                
+                el.addEventListener('click', (e) => {
+                    if (e.target === menuBtn) return; 
                     selectDialog(dialogId);
+                });
+                
+                menuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showDialogMenu(menuBtn, dialogId, el.dataset.dialogName);
                 });
             });
         }
+    }
+
+    function showDialogMenu(btn, dialogId, dialogName) {
+        const existingMenu = document.querySelector('.dropdown-menu');
+        if (existingMenu) existingMenu.remove();
+        
+        const menu = document.createElement('div');
+        menu.className = 'dropdown-menu';
+        menu.innerHTML = `
+            <div class="dropdown-item delete" data-action="delete">🗑 Удалить диалог</div>
+        `;
+        
+        // Позиционировать меню рядом с кнопкой
+        const rect = btn.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = `${rect.bottom + 5}px`;
+        menu.style.left = `${rect.right - 140}px`;
+        document.body.appendChild(menu);
+        
+        // Обработка выбора действия
+        menu.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+            if (confirm(`Удалить диалог с ${dialogName}?`)) {
+                const res = await fetch(`${API_BASE}/dialogs/${dialogId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    if (currentDialogId === dialogId) {
+                        // Если удалили открытый диалог — очистить чат
+                        currentDialogId = null;
+                        messagesContainer.innerHTML = '<div class="empty-state">Выберите диалог, чтобы начать общение</div>';
+                        messageInput.disabled = true;
+                        sendBtn.disabled = true;
+                    }
+                    await loadDialogs();
+                } else {
+                    alert('Ошибка удаления диалога');
+                }
+            }
+            menu.remove();
+        });
+        
+        // Закрыть меню при клике вне его
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeMenu), 10);
     }
 
     async function selectDialog(dialogId) {
@@ -727,7 +856,13 @@
         messageInput.disabled = false;
         sendBtn.disabled = false;
         await loadMessages(dialogId);
-        await loadDialogs(); // обновить активный класс
+        
+        await fetch(`${API_BASE}/dialogs/${dialogId}/read`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        await loadDialogs(); 
     }
 
     async function loadMessages(dialogId) {
@@ -761,7 +896,7 @@
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    // Создание диалога
+    
     document.getElementById('createDialogBtn').onclick = async () => {
         const name = document.getElementById('companionName').value;
         if (!name) return alert('Введите имя собеседника');

@@ -55,6 +55,7 @@ class DialogOut(BaseModel):
     last_message: Optional[str] = None
     companion_id: int
     companion_name: str
+    unread_count: int = 0
 
 class MessageCreate(BaseModel):
     text: str
@@ -67,3 +68,4 @@ class MessageOut(BaseModel):
     text: str
     created_at: datetime
     is_read: bool
+    unread_count: int=0
