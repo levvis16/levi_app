@@ -33,12 +33,14 @@ class Message(Base):
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    dialog_id: Mapped[int] = mapped_column(ForeignKey("dialogs.id"))
+    dialog_id: Mapped[int] = mapped_column(ForeignKey("dialogs.id"), nullable= True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id"), nullable= True)
     sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     is_read: Mapped[bool] = mapped_column(default=False)
 
+    groups: Mapped["Group"] = relationship(back_populates="messages")
     dialog: Mapped["Dialog"] = relationship(back_populates="messages")
     sender: Mapped["User"] = relationship(back_populates="messages") 
 
@@ -65,6 +67,7 @@ class Group(Base):
     name: Mapped[str] = mapped_column(String(30))
     description: Mapped[str] = mapped_column(String(300))
 
+    messages: Mapped[list['Message']] = relationship(back_populates="groups")
     users: Mapped[list['User']] = relationship(
         secondary=user_group, back_populates='groups'
     )

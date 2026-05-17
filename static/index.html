@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Levi</title>
+    <title>Levi · Мессенджер</title>
     <style>
         * {
             margin: 0;
@@ -18,7 +18,6 @@
             overflow: hidden;
         }
 
-        /* Страницы */
         .page {
             position: absolute;
             top: 0;
@@ -34,7 +33,7 @@
             pointer-events: none;
         }
 
-        /* Страница авторизации */
+        /* Auth page */
         .auth-page {
             background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
             display: flex;
@@ -151,14 +150,13 @@
             transform: scale(0.98);
         }
 
-        /* Основной чат (Telegram стиль) */
+        /* Chat page */
         .chat-page {
             background: #0a0a0a;
             display: flex;
             flex-direction: column;
         }
 
-        /* Шапка чата */
         .chat-header {
             background: #1f1f23;
             border-bottom: 0.5px solid #2c2c2e;
@@ -233,7 +231,6 @@
             50% { opacity: 0.5; transform: scale(1.2); }
         }
 
-        /* Диалоги (сайдбар) */
         .dialogs-sidebar {
             background: #111112;
             border-right: 0.5px solid #2c2c2e;
@@ -303,6 +300,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            position: relative;
         }
 
         .dialog-item:hover {
@@ -346,7 +344,66 @@
             max-width: 180px;
         }
 
-        /* Область сообщений */
+        .unread-badge {
+            background: #34c759;
+            color: white;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+            margin-left: 8px;
+        }
+
+        .dialog-menu {
+            background: none;
+            border: none;
+            color: #8e8e93;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .dialog-menu:hover {
+            background: #3a3a3c;
+            color: white;
+        }
+
+        .dropdown-menu {
+            position: fixed;
+            background: #1c1c1e;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            overflow: hidden;
+            z-index: 1000;
+            min-width: 160px;
+            border: 0.5px solid #3a3a3c;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: #3a3a3c;
+        }
+
+        .dropdown-item.delete {
+            color: #ff453a;
+        }
+
         .chat-main {
             flex: 1;
             display: flex;
@@ -381,7 +438,6 @@
             padding: 10px 14px;
             border-radius: 20px;
             word-wrap: break-word;
-            position: relative;
         }
 
         .message.own .message-bubble {
@@ -394,18 +450,6 @@
             background: #1c1c1e;
             color: white;
             border-bottom-left-radius: 4px;
-        }
-
-        .unread-badge {
-            background: #34c759;
-            color: white;
-            border-radius: 20px;
-            padding: 2px 8px;
-            font-size: 12px;
-            font-weight: bold;
-            min-width: 20px;
-            text-align: center;
-            margin-left: 8px;
         }
 
         .message-name {
@@ -476,7 +520,6 @@
             padding: 40px;
         }
 
-        /* Скроллбар */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -490,7 +533,48 @@
             border-radius: 3px;
         }
 
-        /* Адаптив */
+        /* Группы */
+        .section-header {
+            color: #8e8e93;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 12px 12px 6px 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .group-avatar {
+            background: linear-gradient(135deg, #5e5ce0, #3a3a9e);
+        }
+
+        .invite-section {
+            background: #1c1c1e;
+            margin: 12px 16px;
+            padding: 8px;
+            border-radius: 12px;
+            display: none;
+            gap: 8px;
+        }
+
+        .invite-section input {
+            flex: 1;
+            padding: 10px 12px;
+            background: #2c2c2e;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .invite-section button {
+            background: #34c759;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
         @media (max-width: 768px) {
             .chat-page {
                 flex-direction: column;
@@ -504,71 +588,12 @@
             .message {
                 max-width: 85%;
             }
-            /* Выпадающее меню */
-            
-        }
-        .dialog-item {
-            position: relative;
-        }
-
-        .dialog-menu {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #2c2c2e;
-            border: none;
-            border-radius: 50%;
-            color: #8e8e93;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            z-index: 10;
-        }
-
-        .dialog-menu:hover {
-            background: #3a3a3c;
-            color: #ffffff;
-        }
-
-        .dropdown-menu {
-            position: fixed;
-            background: #1c1c1e;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            overflow: hidden;
-            z-index: 1000;
-            min-width: 160px;
-            border: 0.5px solid #3a3a3c;
-        }
-
-        .dropdown-item {
-            padding: 12px 16px;
-            color: #ffffff;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .dropdown-item.delete {
-            color: #ff453a;
-        }
-
-        .dropdown-item.delete:hover {
-            background: #3a3a3c;
-            color: #ff453a;
         }
     </style>
 </head>
 <body>
 
-<!-- Страница авторизации -->
+<!-- Auth page -->
 <div id="authPage" class="page auth-page">
     <div class="auth-container">
         <div class="auth-card">
@@ -580,15 +605,11 @@
                 <button class="auth-tab active" data-tab="login">Вход</button>
                 <button class="auth-tab" data-tab="register">Регистрация</button>
             </div>
-
-            <!-- Форма входа -->
             <div id="loginForm" class="auth-form active">
                 <input type="text" id="loginName" placeholder="Имя пользователя">
                 <input type="password" id="loginPassword" placeholder="Пароль">
                 <button class="auth-btn" id="doLoginBtn">Войти</button>
             </div>
-
-            <!-- Форма регистрации -->
             <div id="registerForm" class="auth-form">
                 <input type="text" id="regName" placeholder="Имя пользователя">
                 <input type="number" id="regAge" placeholder="Возраст">
@@ -599,7 +620,7 @@
     </div>
 </div>
 
-<!-- Страница чата -->
+<!-- Chat page -->
 <div id="chatPage" class="page chat-page hidden">
     <div class="chat-header">
         <button class="logout-btn" id="logoutBtn">←</button>
@@ -612,9 +633,7 @@
             <span id="currentUserName">Пользователь</span>
         </div>
     </div>
-
     <div style="display: flex; flex: 1; overflow: hidden;">
-        <!-- Сайдбар с диалогами -->
         <div class="dialogs-sidebar">
             <div class="dialogs-header">
                 <h3>Диалоги</h3>
@@ -623,12 +642,20 @@
                 <input type="text" id="companionName" placeholder="Имя собеседника">
                 <button id="createDialogBtn">+</button>
             </div>
+            <div class="create-dialog" style="margin-top: 8px;">
+                <input type="text" id="groupName" placeholder="Название группы">
+                <button id="createGroupBtn">+ Группа</button>
+            </div>
+
+            <!-- Приглашение в группу (показывается только при выборе группы) -->
+            <div id="inviteSection" class="invite-section">
+                <input type="text" id="inviteUserName" placeholder="Имя пользователя">
+                <button id="inviteUserBtn">Пригласить</button>
+            </div>
             <div class="dialogs-list" id="dialogsList">
                 <div class="empty-state">Нет диалогов</div>
             </div>
         </div>
-
-        <!-- Область чата -->
         <div class="chat-main">
             <div class="messages-container" id="messagesContainer">
                 <div class="empty-state">Выберите диалог, чтобы начать общение</div>
@@ -647,8 +674,9 @@
     let currentUser = null;
     let currentDialogId = null;
     let ws = null;
+    let currentGroupId = null;
+    let groupsList = [];
 
-    // DOM элементы
     const authPage = document.getElementById('authPage');
     const chatPage = document.getElementById('chatPage');
     const currentUserNameSpan = document.getElementById('currentUserName');
@@ -657,7 +685,7 @@
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendMessageBtn');
 
-    // Переключение табов
+    // Tabs
     document.querySelectorAll('.auth-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
@@ -668,13 +696,12 @@
         });
     });
 
-    // Регистрация
+    // Register
     document.getElementById('doRegisterBtn').onclick = async () => {
         const name = document.getElementById('regName').value;
         const age = document.getElementById('regAge').value;
         const password = document.getElementById('regPassword').value;
         if (!name || !age || !password) return alert('Заполните все поля');
-
         const res = await fetch(`${API_BASE}/users/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -688,12 +715,11 @@
         }
     };
 
-    // Логин
+    // Login
     document.getElementById('doLoginBtn').onclick = async () => {
         const name = document.getElementById('loginName').value;
         const password = document.getElementById('loginPassword').value;
         if (!name || !password) return alert('Введите имя и пароль');
-
         const formData = new URLSearchParams();
         formData.append('username', name);
         formData.append('password', password);
@@ -714,12 +740,13 @@
         }
     };
 
-    // Выход
+    // Logout
     document.getElementById('logoutBtn').onclick = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         if (ws) ws.close();
         token = null;
+        currentGroupId = null;
         currentUser = null;
         currentDialogId = null;
         authPage.classList.remove('hidden');
@@ -739,95 +766,213 @@
         if (!token) return;
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         ws = new WebSocket(`${protocol}//${window.location.host}/dialogs/ws/${token}`);
-        ws.onopen = () => {
-        console.log("WebSocket open, sending ping");
-        ws.send("ping");
-    };
+        ws.onopen = () => console.log("WebSocket connected");
         ws.onmessage = (event) => {
-            console.log("📨 WebSocket получил:", event.data);
             try {
                 const data = JSON.parse(event.data);
                 if (data.event === 'new_message') {
                     if (currentDialogId === data.data.dialog_id) {
                         addMessageToChat(data.data);
-                    }else{
-                        loadDialogs();
                     }
+                    loadDialogs();
                 }
             } catch(e) {
-                console.warn('Ошибка парсинга WebSocket сообщения', e);
+                console.warn("WS parse error", e);
             }
         };
-        ws.onclose = () => console.log('WebSocket closed');
+        ws.onclose = () => console.log("WebSocket closed");
     }
 
+    // Load dialogs
     async function loadDialogs() {
         if (!token) return;
-        const res = await fetch(`${API_BASE}/dialogs/`, {
+        
+        // Загружаем диалоги
+        const dialogsRes = await fetch(`${API_BASE}/dialogs/`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (res.ok) {
-            const dialogs = await res.json();
-            if (dialogs.length === 0) {
-                dialogsList.innerHTML = '<div class="empty-state">Нет диалогов</div>';
+        
+        // Загружаем группы
+        const groupsRes = await fetch(`${API_BASE}/groups/`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (dialogsRes.ok && groupsRes.ok) {
+            const dialogs = await dialogsRes.json();
+            const groups = await groupsRes.json();
+            groupsList = groups;
+            
+            if (dialogs.length === 0 && groups.length === 0) {
+                dialogsList.innerHTML = '<div class="empty-state">Нет чатов</div>';
                 return;
             }
-            dialogsList.innerHTML = dialogs.map(d => `
-                <div class="dialog-item ${currentDialogId === d.id ? 'active' : ''}" data-dialog-id="${d.id}">
-                    <div class="dialog-avatar">${d.companion_name[0].toUpperCase()}</div>
-                    <div class="dialog-info">
-                        <div class="dialog-name">${escapeHtml(d.companion_name)}</div>
-                        <div class="dialog-last-msg">${escapeHtml(d.last_message?.substring(0, 40) || 'Нет сообщений')}</div>
-                    </div>
-                    ${d.unread_count > 0 ? `<div class="unread-badge">${d.unread_count}</div>` : ''}
-                    <button class="dialog-menu" data-dialog-id="${d.id}">⋯</button>
-                </div>
-            `).join('');
             
-            document.querySelectorAll('.dialog-item').forEach(el => {
-                const dialogId = parseInt(el.dataset.dialogId);
-                const menuBtn = el.querySelector('.dialog-menu');
-                
+            let html = '';
+            
+            // Личные диалоги
+            if (dialogs.length > 0) {
+                html += `<div class="section-header">💬 Личные чаты</div>`;
+                html += dialogs.map(d => `
+                    <div class="dialog-item ${currentDialogId === d.id && !currentGroupId ? 'active' : ''}" data-dialog-id="${d.id}" data-type="dialog">
+                        <div class="dialog-avatar">${d.companion_name[0].toUpperCase()}</div>
+                        <div class="dialog-info">
+                            <div class="dialog-name">${escapeHtml(d.companion_name)}</div>
+                            <div class="dialog-last-msg">${escapeHtml(d.last_message?.substring(0, 40) || 'Нет сообщений')}</div>
+                        </div>
+                        ${d.unread_count > 0 ? `<div class="unread-badge">${d.unread_count}</div>` : ''}
+                        <button class="dialog-menu" data-id="${d.id}" data-type="dialog">⋯</button>
+                    </div>
+                `).join('');
+            }
+            
+            // Группы
+            if (groups.length > 0) {
+                html += `<div class="section-header">👥 Группы</div>`;
+                html += groups.map(g => `
+                    <div class="dialog-item ${currentGroupId === g.id && !currentDialogId ? 'active' : ''}" data-group-id="${g.id}" data-type="group">
+                        <div class="dialog-avatar group-avatar">👥</div>
+                        <div class="dialog-info">
+                            <div class="dialog-name">${escapeHtml(g.name)}</div>
+                            <div class="dialog-last-msg">${escapeHtml(g.last_message?.substring(0, 40) || 'Нет сообщений')}</div>
+                        </div>
+                        <button class="dialog-menu" data-id="${g.id}" data-type="group">⋯</button>
+                    </div>
+                `).join('');
+            }
+            
+            dialogsList.innerHTML = html;
+            
+            // Обработчики для диалогов
+            document.querySelectorAll('[data-dialog-id]').forEach(el => {
+                const id = parseInt(el.dataset.dialogId);
                 el.addEventListener('click', (e) => {
-                    if (e.target === menuBtn) return; 
-                    selectDialog(dialogId);
+                    if (e.target.classList.contains('dialog-menu')) return;
+                    selectDialog(id);
                 });
-                
-                menuBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showDialogMenu(menuBtn, dialogId, el.dataset.dialogName);
+                const menuBtn = el.querySelector('.dialog-menu');
+                if (menuBtn) {
+                    menuBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showChatMenu(menuBtn, id, 'dialog');
+                    });
+                }
+            });
+            
+            // Обработчики для групп
+            document.querySelectorAll('[data-group-id]').forEach(el => {
+                const id = parseInt(el.dataset.groupId);
+                el.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('dialog-menu')) return;
+                    selectGroup(id);
                 });
+                const menuBtn = el.querySelector('.dialog-menu');
+                if (menuBtn) {
+                    menuBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showChatMenu(menuBtn, id, 'group');
+                    });
+                }
             });
         }
     }
 
-    function showDialogMenu(btn, dialogId, dialogName) {
+    async function showChatMenu(btn, id, type) {
         const existingMenu = document.querySelector('.dropdown-menu');
         if (existingMenu) existingMenu.remove();
         
         const menu = document.createElement('div');
         menu.className = 'dropdown-menu';
-        menu.innerHTML = `
-            <div class="dropdown-item delete" data-action="delete">🗑 Удалить диалог</div>
-        `;
+        menu.innerHTML = `<div class="dropdown-item delete">🗑 Удалить ${type === 'dialog' ? 'диалог' : 'группу'}</div>`;
         
-        // Позиционировать меню рядом с кнопкой
         const rect = btn.getBoundingClientRect();
         menu.style.position = 'fixed';
         menu.style.top = `${rect.bottom + 5}px`;
         menu.style.left = `${rect.right - 140}px`;
         document.body.appendChild(menu);
         
-        // Обработка выбора действия
-        menu.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-            if (confirm(`Удалить диалог с ${dialogName}?`)) {
+        menu.querySelector('.delete').addEventListener('click', async () => {
+            const url = type === 'dialog' 
+                ? `${API_BASE}/dialogs/${id}`
+                : `${API_BASE}/groups/${id}`;
+            const res = await fetch(url, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                if ((type === 'dialog' && currentDialogId === id) ||
+                    (type === 'group' && currentGroupId === id)) {
+                    currentDialogId = null;
+                    currentGroupId = null;
+                    messagesContainer.innerHTML = '<div class="empty-state">Выберите чат</div>';
+                    messageInput.disabled = true;
+                    sendBtn.disabled = true;
+                    document.getElementById('inviteSection').style.display = 'none';
+                }
+                await loadDialogs();
+            } else {
+                alert('Ошибка удаления');
+            }
+            menu.remove();
+        });
+        
+        setTimeout(() => document.addEventListener('click', function closeMenu(e) {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        }), 10);
+    }
+
+    async function selectGroup(groupId) {
+        currentGroupId = groupId;
+        currentDialogId = null;
+        messageInput.disabled = false;
+        sendBtn.disabled = false;
+        
+        // Показываем секцию приглашения
+        const inviteSection = document.getElementById('inviteSection');
+        inviteSection.style.display = 'flex';
+        
+        await loadGroupMessages(groupId);
+        await loadDialogs();
+    }
+
+    async function loadGroupMessages(groupId) {
+        const res = await fetch(`${API_BASE}/groups/${groupId}/messages?limit=100`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            const messages = await res.json();
+            messagesContainer.innerHTML = '';
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = '<div class="empty-state">Нет сообщений. Напишите что-нибудь!</div>';
+                return;
+            }
+            messages.reverse().forEach(msg => addMessageToChat(msg));
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+
+    function showDialogMenu(btn, dialogId) {
+        const existingMenu = document.querySelector('.dropdown-menu');
+        if (existingMenu) existingMenu.remove();
+        const menu = document.createElement('div');
+        menu.className = 'dropdown-menu';
+        menu.innerHTML = `<div class="dropdown-item delete">🗑 Удалить диалог</div>`;
+        const rect = btn.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = `${rect.bottom + 5}px`;
+        menu.style.left = `${rect.right - 140}px`;
+        document.body.appendChild(menu);
+        
+        menu.querySelector('.delete').addEventListener('click', async () => {
+            if (confirm('Удалить диалог?')) {
                 const res = await fetch(`${API_BASE}/dialogs/${dialogId}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
                     if (currentDialogId === dialogId) {
-                        // Если удалили открытый диалог — очистить чат
                         currentDialogId = null;
                         messagesContainer.innerHTML = '<div class="empty-state">Выберите диалог, чтобы начать общение</div>';
                         messageInput.disabled = true;
@@ -835,20 +980,17 @@
                     }
                     await loadDialogs();
                 } else {
-                    alert('Ошибка удаления диалога');
+                    alert('Ошибка удаления');
                 }
             }
             menu.remove();
         });
-        
-        // Закрыть меню при клике вне его
-        const closeMenu = (e) => {
+        setTimeout(() => document.addEventListener('click', function closeMenu(e) {
             if (!menu.contains(e.target)) {
                 menu.remove();
                 document.removeEventListener('click', closeMenu);
             }
-        };
-        setTimeout(() => document.addEventListener('click', closeMenu), 10);
+        }), 10);
     }
 
     async function selectDialog(dialogId) {
@@ -856,13 +998,11 @@
         messageInput.disabled = false;
         sendBtn.disabled = false;
         await loadMessages(dialogId);
-        
         await fetch(`${API_BASE}/dialogs/${dialogId}/read`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
-        await loadDialogs(); 
+        await loadDialogs();
     }
 
     async function loadMessages(dialogId) {
@@ -876,37 +1016,75 @@
                 messagesContainer.innerHTML = '<div class="empty-state">Нет сообщений. Напишите что-нибудь!</div>';
                 return;
             }
-            messages.reverse().forEach(msg => addMessageToChat(msg, false));
-            if (messagesContainer.children.length > 0) {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
+            messages.reverse().forEach(msg => addMessageToChat(msg));
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
     }
 
-    function addMessageToChat(msg, fromWebsocket = false) {
+    function addMessageToChat(msg) {
         const isOwn = msg.sender_name === currentUser;
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
-        messageDiv.innerHTML = `
-            <div class="message-name">${escapeHtml(msg.sender_name || (isOwn ? currentUser : 'Собеседник'))}</div>
+        const senderName = msg.sender_name || (isOwn ? currentUser : 'Собеседник');
+        const div = document.createElement('div');
+        div.className = `message ${isOwn ? 'own' : 'other'}`;
+        div.innerHTML = `
+            <div class="message-name">${escapeHtml(senderName)}</div>
             <div class="message-bubble">${escapeHtml(msg.text)}</div>
             <div class="message-time">${new Date(msg.created_at).toLocaleTimeString()}</div>
         `;
-        messagesContainer.appendChild(messageDiv);
+        messagesContainer.appendChild(div);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
-
     
+    document.getElementById('createGroupBtn').onclick = async () => {
+        const name = document.getElementById('groupName').value;
+        if (!name) return alert('Введите название группы');
+        
+        const res = await fetch(`${API_BASE}/groups/`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        if (res.ok) {
+            document.getElementById('groupName').value = '';
+            await loadDialogs();
+            alert('Группа создана');
+        } else {
+            alert('Ошибка создания группы');
+        }
+    };
+
+    document.getElementById('inviteUserBtn').onclick = async () => {
+        if (!currentGroupId) return alert('Выберите группу');
+        const userName = document.getElementById('inviteUserName').value;
+        if (!userName) return alert('Введите имя пользователя');
+        
+        // Получаем всех пользователей
+        const usersRes = await fetch(`${API_BASE}/users/`);
+        if (!usersRes.ok) return alert('Ошибка загрузки пользователей');
+        const users = await usersRes.json();
+        const user = users.find(u => u.name === userName);
+        if (!user) return alert('Пользователь не найден');
+        
+        const res = await fetch(`${API_BASE}/groups/${currentGroupId}/users/${user.id}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            alert(`Пользователь ${userName} добавлен в группу`);
+            document.getElementById('inviteUserName').value = '';
+        } else {
+            alert('Ошибка приглашения');
+        }
+    };
+
     document.getElementById('createDialogBtn').onclick = async () => {
         const name = document.getElementById('companionName').value;
         if (!name) return alert('Введите имя собеседника');
-        
         const usersRes = await fetch(`${API_BASE}/users/`);
         if (usersRes.ok) {
             const users = await usersRes.json();
             const companion = users.find(u => u.name === name);
             if (!companion) return alert('Пользователь не найден');
-            
             const res = await fetch(`${API_BASE}/dialogs/`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -922,18 +1100,35 @@
     };
 
     sendBtn.onclick = async () => {
-        if (!currentDialogId) return alert('Выберите диалог');
         const text = messageInput.value.trim();
         if (!text) return;
         
-        const res = await fetch(`${API_BASE}/dialogs/${currentDialogId}/messages`, {
+        let url;
+        if (currentDialogId) {
+            url = `${API_BASE}/dialogs/${currentDialogId}/messages`;
+        } else if (currentGroupId) {
+            url = `${API_BASE}/groups/${currentGroupId}/messages`;
+        } else {
+            return alert('Выберите чат');
+        }
+        
+        const res = await fetch(url, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ text })
         });
+        
         if (res.ok) {
             messageInput.value = '';
-            await loadMessages(currentDialogId);
+            if (currentDialogId) {
+                await loadMessages(currentDialogId);
+                await fetch(`${API_BASE}/dialogs/${currentDialogId}/read`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } else if (currentGroupId) {
+                await loadGroupMessages(currentGroupId);
+            }
             await loadDialogs();
         } else {
             alert('Ошибка отправки');
@@ -941,22 +1136,14 @@
     };
 
     messageInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && sendBtn.disabled === false) {
-            sendBtn.click();
-        }
+        if (e.key === 'Enter' && !sendBtn.disabled) sendBtn.click();
     });
 
     function escapeHtml(str) {
         if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
+        return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;'));
     }
 
-    // Автоматический вход при загрузке
     (async function() {
         const savedToken = localStorage.getItem('token');
         const savedUser = localStorage.getItem('user');

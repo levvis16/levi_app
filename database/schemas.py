@@ -62,8 +62,8 @@ class MessageCreate(BaseModel):
 
 class MessageOut(BaseModel):
     id: int
-    dialog_id: int
-    sender_id: int
+    dialog_id: Optional[int] = None 
+    sender_id: Optional[int] = None
     sender_name: str | None = None  
     text: str
     created_at: datetime
