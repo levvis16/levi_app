@@ -1,6 +1,6 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import Table, Column, ForeignKey, Integer, Text, func
-from sqlalchemy import String, CheckConstraint
+from sqlalchemy import String, CheckConstraint, JSON
 from datetime import datetime, timezone, timedelta
 
 class Base(DeclarativeBase):
@@ -39,6 +39,7 @@ class Message(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     is_read: Mapped[bool] = mapped_column(default=False)
+    attachments: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable= True)
 
     groups: Mapped["Group"] = relationship(back_populates="messages")
     dialog: Mapped["Dialog"] = relationship(back_populates="messages")

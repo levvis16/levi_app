@@ -125,7 +125,8 @@ async def get_group_messages(
             sender_name=sender.name if sender else "Unknown",
             text=msg.text,
             created_at=msg.created_at,
-            is_read=msg.is_read
+            is_read=msg.is_read,
+            attachments = msg.attachments or []
         ))
     return output
 
@@ -133,7 +134,7 @@ async def get_group_messages(
 @router.post('/{group_id}/messages', status_code=201)
 async def send_group_message(
     group_id: int,
-    message: MessageCreate,
+    msg_data: MessageCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -144,7 +145,8 @@ async def send_group_message(
     db_message = Message(
         group_id=group_id,
         sender_id=current_user.id,
-        text=message.text,
+        text=msg_data.text or "",
+        attachments=msg_data.attachments or [],
         created_at = datetime.now()
     )
     db.add(db_message)

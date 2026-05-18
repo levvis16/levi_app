@@ -575,6 +575,79 @@
             cursor: pointer;
         }
 
+        .attach-btn {
+            background: #2c2c2e;
+            border: none;
+            color: #34c759;
+            font-size: 20px;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+        }
+
+        .preview-area {
+            background: #1c1c1e;
+            padding: 8px 20px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            border-top: 0.5px solid #2c2c2e;
+        }
+
+        .preview-item {
+            background: #2c2c2e;
+            border-radius: 12px;
+            padding: 4px 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .preview-item img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
+        .preview-remove {
+            background: none;
+            border: none;
+            color: #ff453a;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .attachments {
+            margin-bottom: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .attachment-image {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .attachment-video {
+            max-width: 250px;
+            border-radius: 12px;
+        }
+
+        .attachment-file {
+            background: #2c2c2e;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            text-decoration: none;
+            color: #34c759;
+        }
+
         @media (max-width: 768px) {
             .chat-page {
                 flex-direction: column;
@@ -661,9 +734,12 @@
                 <div class="empty-state">Выберите диалог, чтобы начать общение</div>
             </div>
             <div class="message-input-area">
+                <button id="attachBtn" class="attach-btn">📎</button>
                 <input type="text" id="messageInput" placeholder="Сообщение" disabled>
                 <button id="sendMessageBtn" disabled>→</button>
             </div>
+            <div id="previewArea" class="preview-area"></div>
+            <input type="file" id="fileInput" multiple style="display:none">
         </div>
     </div>
 </div>
@@ -671,11 +747,13 @@
 <script>
     const API_BASE = "";
     let token = null;
+    let pendingAttachments = [];
     let currentUser = null;
     let currentDialogId = null;
     let ws = null;
     let currentGroupId = null;
     let groupsList = [];
+    let isUploading = false;
 
     const authPage = document.getElementById('authPage');
     const chatPage = document.getElementById('chatPage');
@@ -740,6 +818,41 @@
         }
     };
 
+    document.getElementById('attachBtn').onclick = () => {
+        document.getElementById('fileInput').click();
+    };
+
+    document.getElementById('fileInput').onchange = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        
+        isUploading = true;
+        sendBtn.disabled = true;
+        messageInput.disabled = true;
+        
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch(`${API_BASE}/upload/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            if (res.ok) {
+                const data = await res.json();
+                pendingAttachments.push(data);
+                addPreviewItem(data);
+            } else {
+                alert('Ошибка загрузки файла');
+            }
+        }
+        
+        isUploading = false;
+        sendBtn.disabled = false;
+        messageInput.disabled = false;
+        e.target.value = '';
+    };
+
     // Logout
     document.getElementById('logoutBtn').onclick = () => {
         localStorage.removeItem('token');
@@ -752,6 +865,27 @@
         authPage.classList.remove('hidden');
         chatPage.classList.add('hidden');
     };
+
+    function addPreviewItem(fileData) {
+        const preview = document.getElementById('previewArea');
+        const div = document.createElement('div');
+        div.className = 'preview-item';
+        div.dataset.url = fileData.url;
+        
+        if (fileData.type.startsWith('image/')) {
+            div.innerHTML = `<img src="${fileData.url}" style="width:40px;height:40px;border-radius:8px">`;
+        } else {
+            div.innerHTML = `<span>📄 ${fileData.name.substring(0, 15)}</span>`;
+        }
+        div.innerHTML += `<button class="preview-remove" data-url="${fileData.url}">✕</button>`;
+        preview.appendChild(div);
+        
+        div.querySelector('.preview-remove').onclick = () => {
+            pendingAttachments = pendingAttachments.filter(a => a.url !== fileData.url);
+            div.remove();
+        };
+    }
+
 
     function showChatPage() {
         authPage.classList.add('hidden');
@@ -1023,12 +1157,30 @@
 
     function addMessageToChat(msg) {
         const isOwn = msg.sender_name === currentUser;
-        const senderName = msg.sender_name || (isOwn ? currentUser : 'Собеседник');
         const div = document.createElement('div');
         div.className = `message ${isOwn ? 'own' : 'other'}`;
+        
+        let attachmentsHtml = '';
+        if (msg.attachments && msg.attachments.length > 0) {
+            attachmentsHtml = '<div class="attachments">';
+            for (const att of msg.attachments) {
+                if (att.type.startsWith('image/')) {
+                    attachmentsHtml += `<img src="${att.url}" class="attachment-image" onclick="window.open('${att.url}')">`;
+                } else if (att.type.startsWith('video/')) {
+                    attachmentsHtml += `<video src="${att.url}" controls class="attachment-video"></video>`;
+                } else {
+                    attachmentsHtml += `<a href="${att.url}" class="attachment-file" download>📎 ${att.name}</a>`;
+                }
+            }
+            attachmentsHtml += '</div>';
+        }
+        
         div.innerHTML = `
-            <div class="message-name">${escapeHtml(senderName)}</div>
-            <div class="message-bubble">${escapeHtml(msg.text)}</div>
+            <div class="message-name">${escapeHtml(msg.sender_name || (isOwn ? currentUser : 'Собеседник'))}</div>
+            ${attachmentsHtml}
+            ${ (msg.text && msg.text.trim() !== '') 
+                ? `<div class="message-bubble">${escapeHtml(msg.text)}</div>` 
+                : '' }
             <div class="message-time">${new Date(msg.created_at).toLocaleTimeString()}</div>
         `;
         messagesContainer.appendChild(div);
@@ -1100,8 +1252,14 @@
     };
 
     sendBtn.onclick = async () => {
-        const text = messageInput.value.trim();
-        if (!text) return;
+        if (isUploading) {
+            alert('Подождите, файлы ещё загружаются...');
+            return;
+        }
+        
+        let text = messageInput.value.trim();
+
+        if (!text && pendingAttachments.length === 0) return;
         
         let url;
         if (currentDialogId) {
@@ -1115,17 +1273,19 @@
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ 
+                text: text || '', 
+                attachments: pendingAttachments 
+            })
         });
         
         if (res.ok) {
             messageInput.value = '';
+            pendingAttachments = [];
+            document.getElementById('previewArea').innerHTML = '';
             if (currentDialogId) {
                 await loadMessages(currentDialogId);
-                await fetch(`${API_BASE}/dialogs/${currentDialogId}/read`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                await fetch(`${API_BASE}/dialogs/${currentDialogId}/read`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
             } else if (currentGroupId) {
                 await loadGroupMessages(currentGroupId);
             }

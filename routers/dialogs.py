@@ -125,6 +125,9 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    
+    print("Received message data:", msg_data)
+    print("Attachments:", msg_data.attachments)
     dialog = await db.get(Dialog, dialog_id)
     if not dialog:
         raise HTTPException(status_code=404, detail="Dialog not found")
@@ -136,7 +139,8 @@ async def send_message(
     new_msg = Message(
         dialog_id=dialog.id,
         sender_id=current_user.id,
-        text=msg_data.text,
+        text=msg_data.text or "",
+        attachments=msg_data.attachments or [],
         created_at=datetime.now()
     )
     db.add(new_msg)
@@ -157,7 +161,8 @@ async def send_message(
                 "sender_name": current_user.name,
                 "text": new_msg.text,
                 "created_at": new_msg.created_at.isoformat(),
-                "is_read": new_msg.is_read
+                "is_read": new_msg.is_read,
+                "attachments": new_msg.attachments or []
             }
         })
     else:
@@ -169,7 +174,8 @@ async def send_message(
         sender_name=current_user.name,
         text=new_msg.text,
         created_at=new_msg.created_at,
-        is_read=new_msg.is_read
+        is_read=new_msg.is_read,
+        attachments=new_msg.attachments or []
     )
 
 @router.get("/{dialog_id}/messages", response_model=list[MessageOut])
@@ -202,7 +208,8 @@ async def get_messages(
             sender_name=sender_name,
             text=msg.text,
             created_at=msg.created_at,
-            is_read=msg.is_read
+            is_read=msg.is_read,
+            attachments=msg.attachments or []
         ))
     
     return result_messages
