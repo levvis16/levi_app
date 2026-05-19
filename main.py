@@ -4,26 +4,9 @@ from database.database import engine
 from database.models import Base
 from routers import user, group, dialogs, uploads
 from fastapi.staticfiles import StaticFiles
-import subprocess
-import sys
-
-
-def run_migrations():
-    """Применяет миграции Alembic при запуске"""
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        print("Миграции применены успешно")
-    except subprocess.CalledProcessError as e:
-        print(f"Ошибка миграций: {e.stderr}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    run_migrations()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
