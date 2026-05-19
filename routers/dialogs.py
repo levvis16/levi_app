@@ -126,8 +126,7 @@ async def send_message(
     current_user: User = Depends(get_current_user)
 ):
     
-    print("Received message data:", msg_data)
-    print("Attachments:", msg_data.attachments)
+
     dialog = await db.get(Dialog, dialog_id)
     if not dialog:
         raise HTTPException(status_code=404, detail="Dialog not found")
@@ -151,10 +150,10 @@ async def send_message(
 
     if recipient and recipient.id in active_connections:
         ws = active_connections[recipient.id]
-        
         await ws.send_json({
-            "event": "new_message",
-            "data": {
+            "type": "new_message",
+            "dialog_id": dialog_id,
+            "message": {
                 "id": new_msg.id,
                 "dialog_id": dialog_id,
                 "sender_id": current_user.id,
