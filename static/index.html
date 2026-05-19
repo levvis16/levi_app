@@ -754,6 +754,7 @@
     let currentGroupId = null;
     let groupsList = [];
     let isUploading = false;
+    let pingInterval = null;
 
     const authPage = document.getElementById('authPage');
     const chatPage = document.getElementById('chatPage');
@@ -857,8 +858,9 @@
     document.getElementById('logoutBtn').onclick = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        clearInterval(pingInterval);  // останавливаем ping
+        token = null;                  // обнуляем до закрытия, иначе onclose переподключит
         if (ws) ws.close();
-        token = null;
         currentGroupId = null;
         currentUser = null;
         currentDialogId = null;
@@ -898,9 +900,20 @@
     // WebSocket
     function connectWebSocket() {
         if (!token) return;
+
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         ws = new WebSocket(`${protocol}//${window.location.host}/dialogs/ws/${token}`);
-        ws.onopen = () => console.log("WebSocket connected");
+
+        ws.onopen = () => {
+            console.log("WebSocket connected");
+            // Пингуем каждые 20 сек чтобы Render не закрыл соединение
+            pingInterval = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "ping" }));
+                }
+            }, 20000);
+        };
+
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
@@ -913,13 +926,26 @@
                 }
 
                 if (data.type === 'messages_read') {
+                    // на будущее: обновить галочки прочитанных
                 }
 
             } catch(e) {
                 console.warn("WS parse error", e);
             }
         };
-        ws.onclose = () => console.log("WebSocket closed");
+
+        ws.onclose = (event) => {
+            console.log("WebSocket closed, code:", event.code);
+            clearInterval(pingInterval);
+            // Переподключаемся через 3 секунды если пользователь залогинен
+            if (token) {
+                setTimeout(() => connectWebSocket(), 3000);
+            }
+        };
+
+        ws.onerror = (err) => {
+            console.error("WebSocket error:", err);
+        };
     }
 
     // Load dialogs
