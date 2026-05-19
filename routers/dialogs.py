@@ -149,9 +149,9 @@ async def send_message(
     
     recipient = next((u for u in dialog.users if u.id != current_user.id), None)
 
-    if recipient and recipient.name in active_connections:
-
-        ws = active_connections[recipient.name]
+    if recipient and recipient.id in active_connections:
+        ws = active_connections[recipient.id]
+        
         await ws.send_json({
             "event": "new_message",
             "data": {
@@ -222,79 +222,117 @@ async def websocket_endpoint(websocket: WebSocket, token: str, db: AsyncSession 
         if not user_id:
             await websocket.close(code=1008, reason="Invalid token payload")
             return
+        user_id = int(user_id)  
     except Exception:
         await websocket.close(code=1008, reason="Invalid token")
         return
-    
+
     await websocket.accept()
-    active_connections[user_id] = websocket
-    
+    active_connections[user_id] = websocket  
+
     try:
         while True:
             data = await websocket.receive_json()
-            
+
             if data.get("type") == "ping":
                 await websocket.send_json({"type": "pong"})
                 continue
-            
-            if data.get("type") == "new_message":
+
+            elif data.get("type") == "new_message":
                 dialog_id = data.get("dialog_id")
-                
+                text = data.get("text", "").strip()
+
+                if not dialog_id or not text:
+                    await websocket.send_json({"type": "error", "detail": "dialog_id and text are required"})
+                    continue
+
+                dialog = await db.get(Dialog, dialog_id)
+                if not dialog:
+                    await websocket.send_json({"type": "error", "detail": "Dialog not found"})
+                    continue
+
+                await db.refresh(dialog, attribute_names=["users"])
+                user_ids = [u.id for u in dialog.users]
+                if user_id not in user_ids:
+                    await websocket.send_json({"type": "error", "detail": "Not your dialog"})
+                    continue
+
                 sender = await db.get(User, user_id)
                 message = Message(
                     dialog_id=dialog_id,
                     sender_id=user_id,
-                    sender_name=sender.username,
-                    text=data.get("text"),
-                    is_read=False
+                    text=text,
+                    is_read=False,
+                    created_at=datetime.now()
                 )
                 db.add(message)
                 await db.commit()
                 await db.refresh(message)
-                
-                dialog = await db.get(Dialog, dialog_id)
-                companion_id = dialog.user1_id if dialog.user1_id != user_id else dialog.user2_id
-                
-                if companion_id in active_connections:
-                    await active_connections[companion_id].send_json({
+
+                companion = next((u for u in dialog.users if u.id != user_id), None)
+
+                if companion and companion.id in active_connections:
+                    await active_connections[companion.id].send_json({
                         "type": "new_message",
                         "dialog_id": dialog_id,
                         "message": {
                             "id": message.id,
                             "sender_id": user_id,
-                            "sender_name": sender.username,
+                            "sender_name": sender.name,
                             "text": message.text,
                             "created_at": message.created_at.isoformat(),
-                            "is_read": False
+                            "is_read": False,
+                            "attachments": []
                         }
                     })
-                
+
                 await websocket.send_json({"type": "message_sent", "message_id": message.id})
-            
+
             elif data.get("type") == "new_group_message":
                 group_id = data.get("group_id")
-                
+                text = data.get("text", "").strip()
+
+                if not group_id or not text:
+                    await websocket.send_json({"type": "error", "detail": "group_id and text are required"})
+                    continue
+
                 group = await db.get(Group, group_id)
                 if not group:
+                    await websocket.send_json({"type": "error", "detail": "Group not found"})
                     continue
-                
+
                 sender = await db.get(User, user_id)
                 message = Message(
                     group_id=group_id,
                     sender_id=user_id,
-                    sender_name=sender.username,
-                    text=data.get("text"),
-                    is_read=False
+                    text=text,
+                    is_read=False,
+                    created_at=datetime.now()
                 )
                 db.add(message)
                 await db.commit()
                 await db.refresh(message)
-                
+
                 await websocket.send_json({"type": "message_sent", "message_id": message.id})
-            
+
             elif data.get("type") == "mark_read":
                 dialog_id = data.get("dialog_id")
-                
+
+                if not dialog_id:
+                    await websocket.send_json({"type": "error", "detail": "dialog_id is required"})
+                    continue
+
+                dialog = await db.get(Dialog, dialog_id)
+                if not dialog:
+                    await websocket.send_json({"type": "error", "detail": "Dialog not found"})
+                    continue
+
+                await db.refresh(dialog, attribute_names=["users"])
+                user_ids = [u.id for u in dialog.users]
+                if user_id not in user_ids:
+                    await websocket.send_json({"type": "error", "detail": "Not your dialog"})
+                    continue
+
                 await db.execute(
                     update(Message)
                     .where(Message.dialog_id == dialog_id)
@@ -303,18 +341,24 @@ async def websocket_endpoint(websocket: WebSocket, token: str, db: AsyncSession 
                     .values(is_read=True)
                 )
                 await db.commit()
-                
-                dialog = await db.get(Dialog, dialog_id)
-                companion_id = dialog.user1_id if dialog.user1_id != user_id else dialog.user2_id
-                
-                if companion_id in active_connections:
-                    await active_connections[companion_id].send_json({
+
+                companion = next((u for u in dialog.users if u.id != user_id), None)
+
+                if companion and companion.id in active_connections:
+                    await active_connections[companion.id].send_json({
                         "type": "messages_read",
                         "dialog_id": dialog_id
                     })
-                    
+
+            else:
+                await websocket.send_json({"type": "error", "detail": "Unknown message type"})
+
     except WebSocketDisconnect:
-        del active_connections[user_id]
+        pass
+    except Exception as e:
+        print(f"WebSocket error for user {user_id}: {e}")
+    finally:
+        active_connections.pop(user_id, None)
 
 @router.post('/{dialog_id}/read')
 async def mark_as_read(
