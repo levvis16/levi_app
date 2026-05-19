@@ -904,12 +904,22 @@
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                if (data.event === 'new_message') {
-                    if (currentDialogId === data.data.dialog_id) {
-                        addMessageToChat(data.data);
+                
+                // Обрабатываем оба формата
+                const type = data.type || data.event;
+                const dialogId = data.dialog_id ?? data.data?.dialog_id;
+                const msgData = data.message || data.data;
+
+                if (type === 'new_message') {
+                    if (currentDialogId === dialogId) {
+                        addMessageToChat(msgData);
                     }
                     loadDialogs();
                 }
+
+                if (type === 'messages_read') {
+                }
+
             } catch(e) {
                 console.warn("WS parse error", e);
             }
