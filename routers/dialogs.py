@@ -217,18 +217,24 @@ async def get_messages(
 async def websocket_endpoint(websocket: WebSocket, token: str, db: AsyncSession = Depends(get_db)):
     try:
         payload = decode_token(token)
-        user_id = payload.get("sub")
-        if not user_id:
+        username = payload.get("sub")
+        if not username:
             await websocket.close(code=1008, reason="Invalid token payload")
             return
-        user_id = int(user_id)  
     except Exception:
         await websocket.close(code=1008, reason="Invalid token")
         return
 
-    await websocket.accept()
-    active_connections[user_id] = websocket  
+    result = await db.execute(select(User).where(User.name == username))
+    user = result.scalar_one_or_none()
+    if not user:
+        await websocket.close(code=1008, reason="User not found")
+        return
 
+    user_id = user.id  # теперь это int, совпадает с типом в БД
+
+    await websocket.accept()
+    active_connections[user_id] = websocket
     try:
         while True:
             data = await websocket.receive_json()

@@ -1,3 +1,4 @@
+<!--
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -229,137 +230,6 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.5; transform: scale(1.2); }
-        }
-
-        .support-btn {
-            background: #2c2c2e;
-            border: none;
-            color: #34c759;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            padding: 6px 14px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-
-        .support-btn:hover {
-            background: #3a3a3c;
-            transform: scale(0.97);
-        }
-
-        /* Модальное окно поддержки */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.6);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(4px);
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal {
-            background: #1c1c1e;
-            border-radius: 20px;
-            padding: 28px 24px;
-            width: 100%;
-            max-width: 400px;
-            border: 0.5px solid #3a3a3c;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-        }
-
-        .modal h3 {
-            color: white;
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-
-        .modal p {
-            color: #8e8e93;
-            font-size: 13px;
-            margin-bottom: 20px;
-        }
-
-        .modal input,
-        .modal textarea {
-            width: 100%;
-            padding: 12px 14px;
-            background: #2c2c2e;
-            border: 1px solid #3a3a3c;
-            border-radius: 12px;
-            color: white;
-            font-size: 14px;
-            margin-bottom: 12px;
-            resize: none;
-            font-family: inherit;
-            transition: border-color 0.2s;
-        }
-
-        .modal input:focus,
-        .modal textarea:focus {
-            outline: none;
-            border-color: #34c759;
-        }
-
-        .modal input::placeholder,
-        .modal textarea::placeholder {
-            color: #636366;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 4px;
-        }
-
-        .modal-cancel {
-            flex: 1;
-            padding: 12px;
-            background: #2c2c2e;
-            border: none;
-            border-radius: 12px;
-            color: #8e8e93;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .modal-cancel:hover {
-            background: #3a3a3c;
-        }
-
-        .modal-submit {
-            flex: 2;
-            padding: 12px;
-            background: #34c759;
-            border: none;
-            border-radius: 12px;
-            color: white;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .modal-submit:hover {
-            background: #2ea64f;
-        }
-
-        .modal-submit:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
         }
 
         .dialogs-sidebar {
@@ -796,8 +666,9 @@
     </style>
 </head>
 <body>
+-->
 
-<!-- Auth page -->
+<!--
 <div id="authPage" class="page auth-page">
     <div class="auth-container">
         <div class="auth-card">
@@ -823,8 +694,8 @@
         </div>
     </div>
 </div>
-
-<!-- Chat page -->
+-->
+<!-- Chat page 
 <div id="chatPage" class="page chat-page hidden">
     <div class="chat-header">
         <button class="logout-btn" id="logoutBtn">←</button>
@@ -832,26 +703,11 @@
             <h2>Мессенджер</h2>
             <p>Выберите диалог</p>
         </div>
-        <button class="support-btn" id="supportBtn">❓ Поддержка</button>
         <div class="user-status">
             <div class="online-dot"></div>
             <span id="currentUserName">Пользователь</span>
         </div>
     </div>
-
-    <!-- Модальное окно поддержки -->
-    <div class="modal-overlay" id="supportModal">
-        <div class="modal">
-            <h3>💬 Написать в поддержку</h3>
-            <p>Опишите вашу проблему, и мы ответим как можно скорее</p>
-            <input type="text" id="supportMessage" placeholder="Ваш вопрос или проблема" maxlength="500">
-            <div class="modal-actions">
-                <button class="modal-cancel" id="supportCancel">Отмена</button>
-                <button class="modal-submit" id="supportSubmit">Отправить</button>
-            </div>
-        </div>
-    </div>
-
     <div style="display: flex; flex: 1; overflow: hidden;">
         <div class="dialogs-sidebar">
             <div class="dialogs-header">
@@ -865,8 +721,8 @@
                 <input type="text" id="groupName" placeholder="Название группы">
                 <button id="createGroupBtn">+ Группа</button>
             </div>
-
-            <!-- Приглашение в группу (показывается только при выборе группы) -->
+        -->
+            <!-- Приглашение в группу (показывается только при выборе группы) 
             <div id="inviteSection" class="invite-section">
                 <input type="text" id="inviteUserName" placeholder="Имя пользователя">
                 <button id="inviteUserBtn">Пригласить</button>
@@ -1482,53 +1338,6 @@
         return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;'));
     }
 
-
-    // Поддержка
-    document.getElementById('supportBtn').onclick = () => {
-        document.getElementById('supportModal').classList.add('active');
-        document.getElementById('supportMessage').focus();
-    };
-
-    document.getElementById('supportCancel').onclick = () => {
-        document.getElementById('supportModal').classList.remove('active');
-        document.getElementById('supportMessage').value = '';
-    };
-
-    document.getElementById('supportModal').addEventListener('click', (e) => {
-        if (e.target === document.getElementById('supportModal')) {
-            document.getElementById('supportModal').classList.remove('active');
-            document.getElementById('supportMessage').value = '';
-        }
-    });
-
-    document.getElementById('supportSubmit').onclick = async () => {
-        const message = document.getElementById('supportMessage').value.trim();
-        if (!message) return;
-
-        const submitBtn = document.getElementById('supportSubmit');
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Отправляем...';
-
-        try {
-            const res = await fetch(`${API_BASE}/help?name=${encodeURIComponent(currentUser)}&message=${encodeURIComponent(message)}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                document.getElementById('supportModal').classList.remove('active');
-                document.getElementById('supportMessage').value = '';
-                alert('Сообщение отправлено! Мы скоро ответим.');
-            } else {
-                alert('Ошибка отправки, попробуйте позже.');
-            }
-        } catch(e) {
-            alert('Ошибка сети, попробуйте позже.');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Отправить';
-        }
-    };
     (async function() {
         const savedToken = localStorage.getItem('token');
         const savedUser = localStorage.getItem('user');
@@ -1541,3 +1350,4 @@
 </script>
 </body>
 </html>
+-->
