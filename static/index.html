@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
+<!-- saved from url=(0046)file:///C:/Users/levvis/Downloads/index_1.html -->
+<html lang="ru"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Levi · Мессенджер</title>
     <style>
@@ -780,18 +780,67 @@
         }
 
         @media (max-width: 768px) {
-            .chat-page {
-                flex-direction: column;
+            .chat-header {
+                padding: 10px 14px;
+                gap: 10px;
             }
+            .chat-title h2 { font-size: 16px; }
+
+            .support-btn {
+                padding: 6px 10px;
+                font-size: 16px;
+            }
+            .support-btn-text { display: none; }
+
+            .user-status span { display: none; }
+
             .dialogs-sidebar {
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
                 width: 100%;
-                height: 40%;
                 border-right: none;
-                border-bottom: 0.5px solid #2c2c2e;
+                z-index: 10;
+                transition: transform 0.3s ease;
             }
-            .message {
-                max-width: 85%;
+
+            .dialogs-sidebar.hidden-mobile {
+                transform: translateX(-100%);
+                pointer-events: none;
             }
+
+            .chat-main {
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            }
+
+            .chat-main.visible-mobile {
+                transform: translateX(0);
+            }
+
+            .mobile-back-btn { display: flex !important; }
+
+            .message { max-width: 85%; }
+
+            .message-input-area { padding: 10px 12px; }
+
+            .modal { margin: 16px; max-width: 100%; }
+        }
+
+        .mobile-back-btn {
+            display: none;
+            background: #2c2c2e;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
     </style>
 </head>
@@ -832,7 +881,7 @@
             <h2>Мессенджер</h2>
             <p>Выберите диалог</p>
         </div>
-        <button class="support-btn" id="supportBtn">❓ Поддержка</button>
+        <button class="support-btn" id="supportBtn">❓ <span class="support-btn-text">Поддержка</span></button>
         <div class="user-status">
             <div class="online-dot"></div>
             <span id="currentUserName">Пользователь</span>
@@ -853,7 +902,7 @@
     </div>
 
     <div style="display: flex; flex: 1; overflow: hidden;">
-        <div class="dialogs-sidebar">
+        <div class="dialogs-sidebar" id="dialogsSidebar">
             <div class="dialogs-header">
                 <h3>Диалоги</h3>
             </div>
@@ -875,17 +924,21 @@
                 <div class="empty-state">Нет диалогов</div>
             </div>
         </div>
-        <div class="chat-main">
+        <div class="chat-main" id="chatMain">
+            <div class="chat-main-header" id="chatMainHeader" style="display:none; background:#1f1f23; border-bottom:0.5px solid #2c2c2e; padding:10px 14px; align-items:center; gap:10px;">
+                <button class="mobile-back-btn" id="mobileBackBtn">←</button>
+                <span id="chatMainTitle" style="color:white; font-size:16px; font-weight:600; flex:1;"></span>
+            </div>
             <div class="messages-container" id="messagesContainer">
                 <div class="empty-state">Выберите диалог, чтобы начать общение</div>
             </div>
             <div class="message-input-area">
                 <button id="attachBtn" class="attach-btn">📎</button>
-                <input type="text" id="messageInput" placeholder="Сообщение" disabled>
-                <button id="sendMessageBtn" disabled>→</button>
+                <input type="text" id="messageInput" placeholder="Сообщение" disabled="">
+                <button id="sendMessageBtn" disabled="">→</button>
             </div>
             <div id="previewArea" class="preview-area"></div>
-            <input type="file" id="fileInput" multiple style="display:none">
+            <input type="file" id="fileInput" multiple="" style="display:none">
         </div>
     </div>
 </div>
@@ -1157,9 +1210,10 @@
             // Обработчики для диалогов
             document.querySelectorAll('[data-dialog-id]').forEach(el => {
                 const id = parseInt(el.dataset.dialogId);
+                const name = el.querySelector('.dialog-name')?.textContent || '';
                 el.addEventListener('click', (e) => {
                     if (e.target.classList.contains('dialog-menu')) return;
-                    selectDialog(id);
+                    selectDialog(id, name);
                 });
                 const menuBtn = el.querySelector('.dialog-menu');
                 if (menuBtn) {
@@ -1173,9 +1227,10 @@
             // Обработчики для групп
             document.querySelectorAll('[data-group-id]').forEach(el => {
                 const id = parseInt(el.dataset.groupId);
+                const gname = el.querySelector('.dialog-name')?.textContent || '';
                 el.addEventListener('click', (e) => {
                     if (e.target.classList.contains('dialog-menu')) return;
-                    selectGroup(id);
+                    selectGroup(id, gname);
                 });
                 const menuBtn = el.querySelector('.dialog-menu');
                 if (menuBtn) {
@@ -1235,11 +1290,12 @@
         }), 10);
     }
 
-    async function selectGroup(groupId) {
+    async function selectGroup(groupId, groupName) {
         currentGroupId = groupId;
         currentDialogId = null;
         messageInput.disabled = false;
         sendBtn.disabled = false;
+        openChatMobile(groupName || '');
         
         // Показываем секцию приглашения
         const inviteSection = document.getElementById('inviteSection');
@@ -1305,10 +1361,12 @@
         }), 10);
     }
 
-    async function selectDialog(dialogId) {
+    async function selectDialog(dialogId, dialogName) {
         currentDialogId = dialogId;
+        currentGroupId = null;
         messageInput.disabled = false;
         sendBtn.disabled = false;
+        openChatMobile(dialogName || '');
         await loadMessages(dialogId);
         await fetch(`${API_BASE}/dialogs/${dialogId}/read`, {
             method: 'POST',
@@ -1483,6 +1541,32 @@
     }
 
 
+
+    // Мобильная навигация
+    const isMobile = () => window.innerWidth <= 768;
+    const dialogsSidebar = document.getElementById('dialogsSidebar');
+    const chatMain = document.getElementById('chatMain');
+    const chatMainHeader = document.getElementById('chatMainHeader');
+    const chatMainTitle = document.getElementById('chatMainTitle');
+    const mobileBackBtn = document.getElementById('mobileBackBtn');
+
+    function openChatMobile(name) {
+        if (!isMobile()) return;
+        chatMainTitle.textContent = name || '';
+        chatMainHeader.style.display = 'flex';
+        dialogsSidebar.classList.add('hidden-mobile');
+        chatMain.classList.add('visible-mobile');
+    }
+
+    function closeChatMobile() {
+        if (!isMobile()) return;
+        dialogsSidebar.classList.remove('hidden-mobile');
+        chatMain.classList.remove('visible-mobile');
+        chatMainHeader.style.display = 'none';
+    }
+
+    mobileBackBtn.addEventListener('click', closeChatMobile);
+
     // Поддержка
     document.getElementById('supportBtn').onclick = () => {
         document.getElementById('supportModal').classList.add('active');
@@ -1539,5 +1623,5 @@
         }
     })();
 </script>
-</body>
-</html>
+
+</body></html>
