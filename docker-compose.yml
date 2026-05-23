@@ -38,8 +38,6 @@ services:
     container_name: fastapi_app
     restart: always
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       db:
         condition: service_healthy
     environment:
