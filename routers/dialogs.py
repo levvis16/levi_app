@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func, update
-from typing import List
+from typing import List, Optional
 from sqlalchemy.orm import selectinload
 from datetime import datetime
 import asyncio
@@ -24,6 +24,35 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 
 async def get_redis() -> aioredis.Redis:
     return await aioredis.from_url(REDIS_URL, decode_responses=True)
+
+async def invalidate_dialogs_cache(user_id: int):
+    """Инвалидирует кэш списка диалогов для конкретного пользователя"""
+    r = await get_redis()
+    try:
+        await r.delete(f"user:{user_id}:dialogs")
+    finally:
+        await r.aclose()
+
+
+async def get_cached_dialogs(user_id: int) -> Optional[List[dict]]:
+    """Возвращает закэшированный список диалогов или None"""
+    r = await get_redis()
+    try:
+        cached = await r.get(f"user:{user_id}:dialogs")
+        if cached:
+            return json.loads(cached)
+        return None
+    finally:
+        await r.aclose()
+
+
+async def set_cached_dialogs(user_id: int, dialogs_data: List[dict], ttl: int = 10):
+    """Сохраняет список диалогов в кэш на TTL секунд"""
+    r = await get_redis()
+    try:
+        await r.setex(f"user:{user_id}:dialogs", ttl, json.dumps(dialogs_data))
+    finally:
+        await r.aclose()
 
 
 async def publish_to_user(user_id: int, payload: dict):
@@ -52,37 +81,53 @@ async def listen_for_messages(user_id: int, websocket: WebSocket):
 
 
 @router.get("/", response_model=List[DialogOut])
-async def get_my_dialogs(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_my_dialogs(
+    db: AsyncSession = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    cached = await get_cached_dialogs(current_user.id)
+    if cached is not None:
+        return cached
+    
     stmt = select(Dialog).join(Dialog.users).where(User.id == current_user.id).options(
-        selectinload(Dialog.messages),
-        selectinload(Dialog.users),
+        selectinload(Dialog.users),  # users оставляем, нужно для companion
     )
     result = await db.execute(stmt)
     dialogs = result.scalars().all()
-
+    
     result_list = []
     for dialog in dialogs:
         companion = next((u for u in dialog.users if u.id != current_user.id), None)
         if not companion:
             continue
-
+        
         unread_count = await db.scalar(
             select(func.count(Message.id))
             .where(Message.dialog_id == dialog.id)
             .where(Message.sender_id != current_user.id)
             .where(Message.is_read == False)
         )
-
-        result_list.append(DialogOut(
-            id=dialog.id,
-            created_at=dialog.created_at,
-            last_message=None,
-            companion_id=companion.id,
-            companion_name=companion.name,
-            unread_count=unread_count
-        ))
+        
+        last_msg_result = await db.execute(
+            select(Message.text)
+            .where(Message.dialog_id == dialog.id)
+            .order_by(desc(Message.created_at))
+            .limit(1)
+        )
+        last_message = last_msg_result.scalar_one_or_none()
+        
+        result_list.append({
+            "id": dialog.id,
+            "created_at": dialog.created_at.isoformat() if dialog.created_at else None,
+            "last_message": last_message,
+            "companion_id": companion.id,
+            "companion_name": companion.name,
+            "unread_count": unread_count
+        })
+    
+    await set_cached_dialogs(current_user.id, result_list, ttl=10)
+    
     return result_list
-
 
 @router.post("/", response_model=DialogOut, status_code=status.HTTP_201_CREATED)
 async def create_or_get_dialog(
@@ -123,7 +168,9 @@ async def create_or_get_dialog(
     db.add(new_dialog)
     await db.commit()
     await db.refresh(new_dialog)
-
+    if new_dialog:  
+        await invalidate_dialogs_cache(current_user.id)
+        await invalidate_dialogs_cache(companion.id)
     return DialogOut(
         id=new_dialog.id,
         created_at=new_dialog.created_at,
@@ -148,8 +195,14 @@ async def delete_dialog(
     if current_user not in dialog.users:
         raise HTTPException(status_code=403, detail="You are not a member of this dialog")
 
+    companion = next((u for u in dialog.users if u.id != current_user.id), None)
+
     await db.delete(dialog)
     await db.commit()
+    await invalidate_dialogs_cache(current_user.id)
+    if companion:
+        await invalidate_dialogs_cache(companion.id)
+
     return None
 
 
@@ -195,7 +248,9 @@ async def send_message(
                 "attachments": new_msg.attachments or []
             }
         })
+        await invalidate_dialogs_cache(recipient.id)
 
+    await invalidate_dialogs_cache(current_user.id)
     return MessageOut(
         id=new_msg.id,
         dialog_id=new_msg.dialog_id,
@@ -279,6 +334,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str, db: AsyncSession 
                 await websocket.send_json({"type": "pong"})
                 continue
 
+            if data.get("type") == "invalidate_dialogs":
+                await websocket.send_json({"type": "dialogs_invalidated"})
+
             elif data.get("type") == "mark_read":
                 dialog_id = data.get("dialog_id")
 
@@ -312,6 +370,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str, db: AsyncSession 
                         "dialog_id": dialog_id
                     })
 
+                    await invalidate_dialogs_cache(companion.id)
+
+                await invalidate_dialogs_cache(user_id)
             else:
                 await websocket.send_json({"type": "error", "detail": "Unknown message type"})
 
