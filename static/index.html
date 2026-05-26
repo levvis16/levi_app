@@ -1118,6 +1118,13 @@
                 const data = JSON.parse(event.data);
                 console.log("WS received:", data);
 
+                if (data.type === 'new_group_message') {
+                    if (currentGroupId === data.group_id) {
+                        addMessageToChat(data.message);
+                    }
+                    loadDialogs();
+                }
+
                 if (data.type === 'new_message') {
                     if (currentDialogId === data.dialog_id) {
                         addMessageToChat(data.message);

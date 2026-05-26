@@ -38,9 +38,12 @@ services:
     container_name: fastapi_app
     restart: always
     depends_on:
+      redis:
+        condition: service_healthy
       db:
         condition: service_healthy
     environment:
+      REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/messenger_db
       SECRET_KEY: your-secret-key-change-it
       RABBITMQ_URL: amqp://guest:guest@rabbitmq/
@@ -65,6 +68,17 @@ services:
       RABBITMQ_URL: amqp://guest:guest@rabbitmq/
     volumes:
       - .:/app
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   postgres_data:

@@ -8,6 +8,7 @@ from database.database import get_db
 from database.models import Group, Message, User, user_group
 from database.schemas import GroupCreate, GroupResponse, UserShort, MessageCreate, MessageOut
 from key_logic.hash import get_current_user
+from routers.dialogs import publish_to_user
 
 router = APIRouter(prefix='/groups', tags=['groups'])
 
@@ -141,15 +142,39 @@ async def send_group_message(
     group = await db.get(Group, group_id)
     if not group:
         raise HTTPException(status_code=404, detail='Group not found')
-    
+
     db_message = Message(
         group_id=group_id,
         sender_id=current_user.id,
         text=msg_data.text or "",
         attachments=msg_data.attachments or [],
-        created_at = datetime.now()
+        created_at=datetime.now()
     )
     db.add(db_message)
     await db.commit()
     await db.refresh(db_message)
+
+    # Уведомляем всех участников группы кроме отправителя
+    members_result = await db.execute(
+        select(User).join(user_group).where(user_group.c.group_id == group_id)
+    )
+    members = members_result.scalars().all()
+
+    for member in members:
+        if member.id != current_user.id:
+            await publish_to_user(member.id, {
+                "type": "new_group_message",
+                "group_id": group_id,
+                "message": {
+                    "id": db_message.id,
+                    "group_id": group_id,
+                    "sender_id": current_user.id,
+                    "sender_name": current_user.name,
+                    "text": db_message.text,
+                    "created_at": db_message.created_at.isoformat(),
+                    "is_read": False,
+                    "attachments": db_message.attachments or []
+                }
+            })
+
     return db_message

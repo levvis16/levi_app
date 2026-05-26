@@ -13,3 +13,4 @@ asyncpg
 aiogram>=3.0.0
 faststream[rabbit]
 aio-pika
+redis[asyncio]
