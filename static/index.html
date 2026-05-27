@@ -1424,7 +1424,7 @@
             ${ (msg.text && msg.text.trim() !== '') 
                 ? `<div class="message-bubble">${escapeHtml(msg.text)}</div>` 
                 : '' }
-            <div class="message-time">${new Date(msg.created_at).toLocaleTimeString()}</div>
+            <div class="message-time">${new Date(msg.created_at + 'Z').toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>
         `;
         messagesContainer.appendChild(div);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;

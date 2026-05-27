@@ -19,65 +19,48 @@ router = APIRouter(prefix="/dialogs", tags=["Dialogs"])
 
 active_connections: dict[int, WebSocket] = {}
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+redis_pool: aioredis.ConnectionPool = None
 
-
-async def get_redis() -> aioredis.Redis:
-    return await aioredis.from_url(REDIS_URL, decode_responses=True)
+def get_redis() -> aioredis.Redis:
+    return aioredis.Redis(connection_pool=redis_pool)
 
 async def invalidate_dialogs_cache(user_id: int):
-    """Инвалидирует кэш списка диалогов для конкретного пользователя"""
-    r = await get_redis()
-    try:
-        await r.delete(f"user:{user_id}:dialogs")
-    finally:
-        await r.aclose()
+    r = get_redis()
+    await r.delete(f"user:{user_id}:dialogs")
 
 
 async def get_cached_dialogs(user_id: int) -> Optional[List[dict]]:
-    """Возвращает закэшированный список диалогов или None"""
-    r = await get_redis()
-    try:
-        cached = await r.get(f"user:{user_id}:dialogs")
-        if cached:
-            return json.loads(cached)
-        return None
-    finally:
-        await r.aclose()
+    r = get_redis()
+    cached = await r.get(f"user:{user_id}:dialogs")
+    if cached:
+        return json.loads(cached)
+    return None
 
 
-async def set_cached_dialogs(user_id: int, dialogs_data: List[dict], ttl: int = 10):
-    """Сохраняет список диалогов в кэш на TTL секунд"""
-    r = await get_redis()
-    try:
-        await r.setex(f"user:{user_id}:dialogs", ttl, json.dumps(dialogs_data))
-    finally:
-        await r.aclose()
+async def set_cached_dialogs(user_id: int, dialogs_data: List[dict], ttl: int = 60):
+    r = get_redis()
+    await r.setex(f"user:{user_id}:dialogs", ttl, json.dumps(dialogs_data))
 
 
 async def publish_to_user(user_id: int, payload: dict):
-    """Публикуем событие в Redis канал юзера."""
-    r = await get_redis()
+    r = get_redis()
     await r.publish(f"user:{user_id}", json.dumps(payload))
-    await r.aclose()
 
 
 async def listen_for_messages(user_id: int, websocket: WebSocket):
-    """Слушаем Redis канал и шлём сообщения в WS."""
-    r = await get_redis()
+    r = get_redis()
     pubsub = r.pubsub()
     await pubsub.subscribe(f"user:{user_id}")
     try:
         async for message in pubsub.listen():
             if message["type"] == "message":
                 data = json.loads(message["data"])
-                if websocket.client_state.value == 1:  # CONNECTED
+                if websocket.client_state.value == 1:
                     await websocket.send_json(data)
     except Exception as e:
         print(f"Redis listener error for user {user_id}: {e}")
     finally:
         await pubsub.unsubscribe(f"user:{user_id}")
-        await r.aclose()
 
 
 @router.get("/", response_model=List[DialogOut])
@@ -226,7 +209,6 @@ async def send_message(
         sender_id=current_user.id,
         text=msg_data.text or "",
         attachments=msg_data.attachments or [],
-        created_at=datetime.now()
     )
     db.add(new_msg)
     await db.commit()

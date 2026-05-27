@@ -148,13 +148,11 @@ async def send_group_message(
         sender_id=current_user.id,
         text=msg_data.text or "",
         attachments=msg_data.attachments or [],
-        created_at=datetime.now()
     )
     db.add(db_message)
     await db.commit()
     await db.refresh(db_message)
 
-    # Уведомляем всех участников группы кроме отправителя
     members_result = await db.execute(
         select(User).join(user_group).where(user_group.c.group_id == group_id)
     )

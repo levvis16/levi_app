@@ -5,10 +5,11 @@ from database.models import Base
 from routers import dialogs, group, uploads, user, broker
 from fastapi.staticfiles import StaticFiles
 import asyncio
+import os
+import redis.asyncio as aioredis
 
 async def wait_for_rabbitmq():
     import aio_pika
-    import os
     url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost/")
     for i in range(30):
         try:
@@ -23,10 +24,15 @@ async def wait_for_rabbitmq():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    dialogs.redis_pool = aioredis.ConnectionPool.from_url(redis_url, decode_responses=True)
+
     await wait_for_rabbitmq()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
+
+    await dialogs.redis_pool.disconnect()
 
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
