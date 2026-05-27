@@ -125,7 +125,7 @@ async def get_my_dialogs(
             "unread_count": unread_count
         })
     
-    await set_cached_dialogs(current_user.id, result_list, ttl=10)
+    await set_cached_dialogs(current_user.id, result_list, ttl=60)
     
     return result_list
 
