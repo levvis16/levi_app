@@ -206,6 +206,7 @@ async def send_message(
 
     new_msg = Message(
         dialog_id=dialog.id,
+        created_at = func.now(),
         sender_id=current_user.id,
         text=msg_data.text or "",
         attachments=msg_data.attachments or [],
