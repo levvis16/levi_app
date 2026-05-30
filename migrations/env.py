@@ -1,5 +1,5 @@
-
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -8,19 +8,25 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# Это ваша базовая модель (где объявлен Base)
-from database.models import Base  
-from database.database import DATABASE_URL  # ваш URL для БД
+from database.models import Base
 
 config = context.config
-fileConfig(config.config_file_name)
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+
+
 def run_migrations_offline() -> None:
-    """Оффлайн-миграция (синхронная, без подключения)."""
+    """Оффлайн-миграция (без подключения к БД)."""
+    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=DATABASE_URL,
+        url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -29,12 +35,14 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
+
 def do_run_migrations(connection: Connection) -> None:
-    """Запуск миграции через синхронное подключение (обертка)."""
+    """Запуск миграции через синхронное подключение."""
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
         context.run_migrations()
+
 
 async def run_async_migrations() -> None:
     """Асинхронное подключение и запуск миграции."""
@@ -49,11 +57,12 @@ async def run_async_migrations() -> None:
 
     await connectable.dispose()
 
+
 def run_migrations_online() -> None:
-    """Точка входа для онлайн-миграций (вызывает асинхронную версию)."""
+    """Точка входа для онлайн-миграций."""
     asyncio.run(run_async_migrations())
 
-# Выбор режима
+
 if context.is_offline_mode():
     run_migrations_offline()
 else:
