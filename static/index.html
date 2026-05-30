@@ -824,13 +824,13 @@
         .reply-preview {
             background: #1c1c1e;
             border-left: 3px solid #34c759;
-            padding: 8px 12px;
-            margin: 0 20px 6px 20px;
-            border-radius: 8px;
+            padding: 10px 14px;
+            margin: 0 16px 8px 16px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 8px;
+            gap: 12px;
         }
 
         .reply-preview-content {
@@ -839,42 +839,80 @@
         }
 
         .reply-preview-name {
+            color: #4cd964 !important;
             font-size: 12px;
-            color: #34c759;
             font-weight: 600;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
 
         .reply-preview-text {
+            color: #c0c0c5 !important;
             font-size: 13px;
-            color: #8e8e93;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .reply-cancel-btn {
-            background: none;
+            background: #2c2c2e;
             border: none;
             color: #8e8e93;
             font-size: 18px;
             cursor: pointer;
-            flex-shrink: 0;
-            padding: 2px 6px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
         }
 
-        .reply-cancel-btn:hover { color: white; }
+        .reply-cancel-btn:hover {
+            background: #3a3a3c;
+            color: white;
+        }
 
         /* Reply inside message bubble */
         .reply-in-message {
-            background: rgba(0,0,0,0.2);
-            border-left: 3px solid rgba(255,255,255,0.4);
-            padding: 6px 10px;
-            border-radius: 8px;
-            margin-bottom: 6px;
+            background: rgba(182, 148, 148, 0.06);
+            border-left: 3px solid #34c759;
+            padding: 8px 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
             font-size: 12px;
+        }
+
+        .message.own .reply-in-message {
+            background: rgba(201, 186, 186, 0.25);
+            border-left-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .reply-in-message-name {
+            color: #4cd964;  /* Светло-зелёный, хорошо читается на тёмном */
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+
+        .reply-in-message-text {
+            color: #aeaeb2;  /* Светло-серый, не белый, но читаемый */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-style: italic;
+        }
+
+        /* Эффект при клике правой кнопкой */
+        .message {
+            transition: background-color 0.2s ease;
+            border-radius: 12px;
+            padding: 4px;
+            cursor: context-menu;
+        }
+
+        .message:hover {
+            background-color: rgba(255, 255, 255, 0.05);
         }
 
         .message.own .reply-in-message {
@@ -944,6 +982,33 @@
             justify-content: center;
             flex-shrink: 0;
         }
+
+        .reply-in-message,
+        .reply-in-message * {
+            color: #ffffff !important;
+        }
+
+        .reply-in-message-name {
+            color: #4cd964 !important;
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+
+        .reply-in-message-text {
+            color: #c0c0c5 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-style: italic;
+        }
+
+        .message.own .reply-in-message-text {
+            color: #e0e0e5 !important;
+        }
+
+
+
     </style>
 </head>
 <body>
@@ -1513,8 +1578,15 @@
 
     function setReply(senderName, text) {
         replyTo = { sender_name: senderName, text: text };
-        document.getElementById('replyPreviewName').textContent = senderName;
-        document.getElementById('replyPreviewText').textContent = text;
+        const previewName = document.getElementById('replyPreviewName');
+        const previewText = document.getElementById('replyPreviewText');
+        if (previewName) previewName.textContent = `Ответ для ${senderName}`;
+        if (previewText) previewText.textContent = text.length > 60 ? text.substring(0, 60) + '…' : text;
+        
+        // Принудительно задаём цвета (на случай если CSS не сработал)
+        if (previewName) previewName.style.color = '#4cd964';
+        if (previewText) previewText.style.color = '#c0c0c5';
+        
         document.getElementById('replyPreview').style.display = 'flex';
         messageInput.focus();
     }
@@ -1532,29 +1604,32 @@
         const isOwn = msg.sender_name === currentUser;
         const div = document.createElement('div');
         div.className = `message ${isOwn ? 'own' : 'other'}`;
+        
+        div.dataset.senderName = msg.sender_name || (isOwn ? currentUser : 'Собеседник');
+        div.dataset.messageText = msg.text || '';
+        div.dataset.messageId = msg.id;
 
         let attachmentsHtml = '';
         if (msg.attachments && msg.attachments.length > 0) {
             attachmentsHtml = '<div class="attachments">';
             for (const att of msg.attachments) {
-                if (att.type.startsWith('image/')) {
+                if (att.type && att.type.startsWith('image/')) {
                     attachmentsHtml += `<img src="${att.url}" class="attachment-image" onclick="window.open('${att.url}')">`;
-                } else if (att.type.startsWith('video/')) {
+                } else if (att.type && att.type.startsWith('video/')) {
                     attachmentsHtml += `<video src="${att.url}" controls class="attachment-video"></video>`;
                 } else {
-                    attachmentsHtml += `<a href="${att.url}" class="attachment-file" download>📎 ${att.name}</a>`;
+                    attachmentsHtml += `<a href="${att.url}" class="attachment-file" download>📎 ${escapeHtml(att.name || 'Файл')}</a>`;
                 }
             }
             attachmentsHtml += '</div>';
         }
 
-        // Цитата если есть reply
         let replyHtml = '';
         if (msg.reply_to) {
             replyHtml = `
                 <div class="reply-in-message">
-                    <div class="reply-in-message-name">${escapeHtml(msg.reply_to.sender_name)}</div>
-                    <div class="reply-in-message-text">${escapeHtml(msg.reply_to.text)}</div>
+                    <div class="reply-in-message-name">↩ ${escapeHtml(msg.reply_to.sender_name)}</div>
+                    <div class="reply-in-message-text">${escapeHtml(msg.reply_to.text.substring(0, 80))}${msg.reply_to.text.length > 80 ? '…' : ''}</div>
                 </div>`;
         }
 
@@ -1566,15 +1641,26 @@
                 ? `<div class="message-bubble">${escapeHtml(msg.text)}</div>`
                 : '' }
             <div class="message-time">${new Date(msg.created_at + 'Z').toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>
-            <button class="reply-btn" title="Ответить">↩ Ответить</button>
         `;
 
-        // Кнопка ответа
-        div.querySelector('.reply-btn').onclick = () => {
-            const senderName = msg.sender_name || (isOwn ? currentUser : 'Собеседник');
-            const text = msg.text || '';
-            setReply(senderName, text);
-        };
+        div.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const senderName = div.dataset.senderName;
+            const messageText = div.dataset.messageText;
+            if (messageText && messageText.trim()) {
+                setReply(senderName, messageText);
+                div.style.backgroundColor = 'rgba(52, 199, 89, 0.15)';
+                setTimeout(() => div.style.backgroundColor = '', 200);
+            } else {
+                // Можно показать уведомление, что нельзя ответить на сообщение без текста
+                const notification = document.createElement('div');
+                notification.textContent = '📎 Нельзя ответить на сообщение с вложением без текста';
+                notification.style.cssText = 'position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#2c2c2e; color:white; padding:8px 16px; border-radius:20px; font-size:12px; z-index:9999;';
+                document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 2000);
+            }
+            return false;
+        });
 
         messagesContainer.appendChild(div);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
