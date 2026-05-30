@@ -209,6 +209,7 @@ async def send_message(
         sender_id=current_user.id,
         text=msg_data.text or "",
         attachments=msg_data.attachments or [],
+        reply_to=msg_data.reply_to
     )
     db.add(new_msg)
     await db.commit()
@@ -227,7 +228,8 @@ async def send_message(
                 "text": new_msg.text,
                 "created_at": new_msg.created_at.isoformat(),
                 "is_read": new_msg.is_read,
-                "attachments": new_msg.attachments or []
+                "attachments": new_msg.attachments or [],
+                "reply_to": new_msg.reply_to
             }
         })
         await invalidate_dialogs_cache(recipient.id)
@@ -241,7 +243,8 @@ async def send_message(
         text=new_msg.text,
         created_at=new_msg.created_at,
         is_read=new_msg.is_read,
-        attachments=new_msg.attachments or []
+        attachments=new_msg.attachments or [],
+        reply_to=msg_data.reply_to
     )
 
 
@@ -276,7 +279,8 @@ async def get_messages(
             text=msg.text,
             created_at=msg.created_at,
             is_read=msg.is_read,
-            attachments=msg.attachments or []
+            attachments=msg.attachments or [],
+            reply_to=msg.reply_to
         ))
 
     return result_messages

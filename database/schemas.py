@@ -60,6 +60,7 @@ class DialogOut(BaseModel):
 class MessageCreate(BaseModel):
     text: str | None = None
     attachments: list[dict] | None = []
+    reply_to: dict | None = None
 
 class MessageOut(BaseModel):
     id: int
@@ -71,3 +72,4 @@ class MessageOut(BaseModel):
     is_read: bool
     unread_count: int=0
     attachments: list[dict] | None = []
+    reply_to: dict | None = None

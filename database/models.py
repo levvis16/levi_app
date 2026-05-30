@@ -39,6 +39,7 @@ class Message(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     is_read: Mapped[bool] = mapped_column(default=False)
+    reply_to: Mapped[dict | None] = mapped_column(JSON, default=None, nullable=True)
     attachments: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable= True)
 
     groups: Mapped["Group"] = relationship(back_populates="messages")
