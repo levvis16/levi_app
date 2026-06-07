@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from database.database import get_db
-from key_logic.hash import get_current_user, hash_password, verify_password, create_access_token
-from database.models import User as UserModel
-from database.schemas import UserResponse, UserCreate
+from main_app.database.database import get_db
+from main_app.key_logic.hash import get_current_user, hash_password, verify_password, create_access_token
+from main_app.database.models import User as UserModel
+from main_app.database.schemas import UserResponse, UserCreate
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import os
 from dotenv import load_dotenv
 from fastapi.security import OAuth2PasswordRequestForm
-from routers.dialogs import active_connections
+from main_app.routers.dialogs import active_connections
 
 load_dotenv()
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")

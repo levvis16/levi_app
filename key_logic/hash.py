@@ -7,8 +7,8 @@ from passlib.context import CryptContext
 import os
 from dotenv import load_dotenv
 
-from database.models import User as UserModel
-from database.database import get_db
+from main_app.database.models import User as UserModel
+from main_app.database.database import get_db
 
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-it")

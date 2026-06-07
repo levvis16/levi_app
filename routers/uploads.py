@@ -2,8 +2,8 @@ import os
 import uuid
 import shutil
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from key_logic.hash import get_current_user
-from database.models import User
+from main_app.key_logic.hash import get_current_user
+from main_app.database.models import User
 
 router = APIRouter(prefix="/upload", tags = ["Uploads"])
 

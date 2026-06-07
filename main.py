@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from database.database import engine
-from database.models import Base
-from routers import dialogs, group, uploads, user, broker
+from main_app.database.database import engine
+from main_app.database.models import Base
+from main_app.routers import broker, dialogs, group, uploads
+from main_app.routers import user
 from fastapi.staticfiles import StaticFiles
 import asyncio
 import os

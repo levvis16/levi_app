@@ -10,10 +10,10 @@ import os
 
 import redis.asyncio as aioredis
 
-from database.database import get_db
-from database.models import User, Dialog, Message, user_dialog, Group
-from database.schemas import DialogCreate, DialogOut, MessageCreate, MessageOut
-from key_logic.hash import get_current_user, decode_token
+from main_app.database.database import get_db
+from main_app.database.models import User, Dialog, Message, user_dialog, Group
+from main_app.database.schemas import DialogCreate, DialogOut, MessageCreate, MessageOut
+from main_app.key_logic.hash import get_current_user, decode_token
 
 router = APIRouter(prefix="/dialogs", tags=["Dialogs"])
 
