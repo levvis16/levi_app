@@ -28,7 +28,7 @@
 
     docker compose up --build
 
-Приложение доступно на порту 8000, интерфейс — `static/index.html`.
+Приложение доступно на порту 8000. Интерфейс: `static/index.html`, стили в `static/css/app.css`, логика в `static/js/app.js`.
 
 # Основной стек технологий:
 
