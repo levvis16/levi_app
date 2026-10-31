@@ -1,5 +1,5 @@
 from faststream.rabbit.fastapi import RabbitRouter
-from key_logic.hash import get_current_user
+from auth import get_current_user
 from database.models import User
 from fastapi import Depends, HTTPException
 import os

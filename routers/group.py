@@ -4,11 +4,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.database import get_db
+from database.session import get_db
 from database.models import Group, Message, User, user_group
 from database.schemas import GroupCreate, GroupResponse, UserShort, MessageCreate, MessageOut
-from key_logic.hash import get_current_user
-from routers.dialogs import publish_to_user
+from auth import get_current_user
+from realtime import publish_to_user
 
 router = APIRouter(prefix='/groups', tags=['groups'])
 

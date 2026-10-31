@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from database.database import get_db
-from key_logic.hash import get_current_user, hash_password, verify_password, create_access_token
+from database.session import get_db
+from auth import get_current_user, hash_password, verify_password, create_access_token
 from database.models import User as UserModel
 from database.schemas import UserResponse, UserCreate
 from sqlalchemy import select
@@ -9,7 +9,6 @@ from sqlalchemy.orm import selectinload
 import os
 from dotenv import load_dotenv
 from fastapi.security import OAuth2PasswordRequestForm
-from routers.dialogs import active_connections
 
 load_dotenv()
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")

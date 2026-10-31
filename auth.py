@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 
 from database.models import User as UserModel
-from database.database import get_db
+from database.session import get_db
 
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-it")

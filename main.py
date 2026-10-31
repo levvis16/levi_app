@@ -1,13 +1,12 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from database.database import engine
-from database.models import Base
 from routers import broker, dialogs, group, uploads
 from routers import user
 from fastapi.staticfiles import StaticFiles
 import asyncio
 import os
-import redis.asyncio as aioredis
+
+from realtime import close_redis, init_redis
 
 async def wait_for_rabbitmq():
     import aio_pika
@@ -25,15 +24,10 @@ async def wait_for_rabbitmq():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-    dialogs.redis_pool = aioredis.ConnectionPool.from_url(redis_url, decode_responses=True)
-
+    init_redis(os.getenv("REDIS_URL", "redis://localhost:6379"))
     await wait_for_rabbitmq()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     yield
-
-    await dialogs.redis_pool.disconnect()
+    await close_redis()
 
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
